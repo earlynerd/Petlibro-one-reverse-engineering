@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------------
+# Raw flash dumps may contain personal + device secrets (WiFi creds, cloud
+# tokens, TLS material, access-log history). NEVER publish the raw image.
+# Keep the golden backup local; commit only the *_sanitized.bin copy.
+# ---------------------------------------------------------------------------
+flash_dump/*.bin
+!flash_dump/*_sanitized.bin
+
+# Stray dumps anywhere else (e.g. test.bin from a partial read)
+/test.bin
+*.raw
+
+# PlatformIO build output (the firmware/pico-bridge/.gitignore covers its own
+# .pio, this is a backstop if the repo root differs)
+.pio/
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
