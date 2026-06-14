@@ -28,6 +28,14 @@ public:
   void setEnabled(bool en) { _enabled = en; }
   bool enabled() const { return _enabled; }
 
+  // Release / reclaim the two PIO RX UARTs so another consumer (RFID master
+  // mode) can drive the same GP4/GP5 pins. suspend() ends both UARTs and makes
+  // service() a no-op; resume() re-inits them at the stored baud/formats and
+  // clears any half-assembled frame. Idempotent.
+  void suspend();
+  void resume();
+  bool suspended() const { return _suspended; }
+
   uint32_t framesOn(int channel) const;   // 0 = reader, 1 = host
   uint32_t bytesOn(int channel) const;
 
@@ -63,6 +71,7 @@ private:
   Channel   _host;
   bool      _hostEnabled;
   bool      _enabled = false;   // default OFF: floating taps would spam/block CDC1
+  bool      _suspended = false; // true while master mode owns the GP4/GP5 pins
   uint32_t  _baud;              // shared: link runs one baud both directions
   uint16_t  _readerFormat;      // reader tap (module TX) framing -- see config.h
   uint16_t  _hostFormat;        // host tap (RTL TX) framing

@@ -2,23 +2,28 @@
 #include <Arduino.h>
 #include "rtl_bridge.h"
 #include "rfid_snoop.h"
+#include "rfid_master.h"
 
 // Interactive command console on USB CDC1. Line-buffered, simple verb parser.
 // Also relays the RFID snoop output to the same port so you can flash on CDC0
 // while watching tag traffic and issuing reset/boot commands here.
 class ControlConsole {
 public:
-  void begin(Stream* io, RtlBridge* rtl, RfidSnoop* snoop);
+  void begin(Stream* io, RtlBridge* rtl, RfidSnoop* snoop, RfidMaster* master);
   void service();   // read/dispatch input lines + pump snoop output
 
 private:
   void handleLine(char* line);
+  void handleMaster(char* sub);   // `master ...` subcommand dispatch
+  bool masterGuard();             // true (and warns) if a host-control verb is
+                                  // blocked because master mode is active
   void printHelp();
   void printStatus();
 
-  Stream*     _io    = nullptr;
-  RtlBridge*  _rtl   = nullptr;
-  RfidSnoop*  _snoop = nullptr;
+  Stream*     _io     = nullptr;
+  RtlBridge*  _rtl    = nullptr;
+  RfidSnoop*  _snoop  = nullptr;
+  RfidMaster* _master = nullptr;
   char        _buf[80];
   size_t      _len   = 0;
   bool        _greeted = false;

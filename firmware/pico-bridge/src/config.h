@@ -123,8 +123,45 @@
 #define RFID_HOST_FORMAT    SERIAL_8O1   // RTL TX (commands)    -- odd parity
 
 // Inter-byte idle gap (microseconds) that ends a frame for the snoop logger.
-// ~3 character times at the snoop baud is a sensible default.
+// ~3 character times at the snoop baud is a sensible default. Reused by the
+// master-mode receiver to know when a reply frame has finished.
 #define RFID_FRAME_GAP_US   3000UL
+
+// ---- RFID MASTER mode (Pico impersonates the RTL on the JY-L601D bus) -------
+//   A step beyond the passive snoop: hold the RTL host in reset (CHIP_EN low)
+//   so it releases the command line, suspend the snoop to free these pins, then
+//   the Pico becomes the Modbus master and can read/write the module directly
+//   (e.g. sweep every holding register). It drives the SAME two physical lines
+//   the snoop taps -- only now GP4 is an OUTPUT:
+//       TX (commands) on RFID_MASTER_TX_PIN @ 8O1  ->  module RX  (= the RTL-TX net)
+//       RX (replies)  on RFID_MASTER_RX_PIN @ 8E1  <-  module TX
+//   Asymmetric parity is kept (the module accepts 8O1 commands and answers 8E1),
+//   so TX and RX are two separate SerialPIO instances -- one format each.
+//
+//   ⚠ BENCH-VERIFY BEFORE USE:
+//     1. The RTL must tri-state its RFID-UART TX pin while held in CHIP_EN reset,
+//        or the Pico's GP4 drive will fight it. Meter the command net during
+//        `rst on` -- it should follow the Pico, not sit driven by the RTL.
+//     2. The module must stay powered with the RTL held off (it is expected to
+//        be on an always-on rail, not gated by an RTL GPIO). If reads go silent
+//        the instant you enter master mode, the module may be losing power.
+#define RFID_MASTER_TX_PIN     RFID_HOST_RX_PIN     // GP4: DRIVE commands at the module
+#define RFID_MASTER_RX_PIN     RFID_READER_RX_PIN   // GP5: listen for the module's replies
+#define RFID_MASTER_TX_FORMAT  SERIAL_8O1           // module accepts odd-parity commands
+#define RFID_MASTER_RX_FORMAT  SERIAL_8E1           // module replies in even parity
+#define RFID_MB_SLAVE          0x03                 // JY-L601D Modbus slave address
+#define RFID_MASTER_TIMEOUT_MS 40UL                 // per-transaction reply wait (ms)
+                                                    // answered regs reply in <5 ms; a
+                                                    // silent reg waits the full timeout
+#define RFID_MASTER_DUMP_FIRST 0x0000               // default `master dump` sweep range
+#define RFID_MASTER_DUMP_LAST  0x00FF
+#define RFID_MASTER_BLOCK_QTY  16                   // when a base address answers,
+                                                    // `master dump` follows up with a
+                                                    // read of up to this many registers
+                                                    // to pull the rest of the block --
+                                                    // the module ignores mid-block reads,
+                                                    // so a 1-at-a-time sweep never sees
+                                                    // past each base address
 
 // ---- Status LED ------------------------------------------------------------
 #define STATUS_LED_PIN      LED_BUILTIN

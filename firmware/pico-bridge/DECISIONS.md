@@ -2,6 +2,46 @@
 
 Forward-facing log of structural/behavioural decisions. Newest at top.
 
+## 2026-06-13 — RFID MASTER mode: Pico impersonates the RTL on the module bus
+
+- **New capability beyond the passive snoop: the Pico can now *drive* the
+  JY-L601D as the Modbus master** and read/write any register (e.g. sweep the
+  whole holding-register map). Lives in `src/rfid_master.{h,cpp}` (`RfidMaster`,
+  global `Master`); driven from the console `master …` subcommands.
+- **Mechanism (`master on`):** (1) hold the RTL in CHIP_EN reset so it stops
+  being the master and *releases the command net*; (2) `RfidSnoop::suspend()`
+  ends both RX-only PIO UARTs to free GP4/GP5; (3) `RfidMaster::begin()` claims
+  the same two lines — **TX-only on GP4 @ 8O1** (commands) + **RX-only on GP5 @
+  8E1** (replies). `master off` reverses it: end master → `Snoop.resume()` →
+  release reset (host reboots). Order matters and is enforced: GP4 only becomes
+  an OUTPUT while the RTL is held off, and is forced back to hi-Z input before
+  reset is released.
+- **Why two SerialPIO instances again:** the module's asymmetric parity (accepts
+  8O1 commands, answers 8E1) means TX and RX need different formats, and one
+  SerialPIO applies a single format to both directions — so master mode mirrors
+  the snoop's two-instance split, now one TX + one RX. TX/RX sit on different
+  physical nets, so we never hear our own transmissions (full-duplex from here).
+  Verified in the core's `SerialPIO.cpp`: `write()` generates the parity bit for
+  8E1/8O1, and TX-only / RX-only construction is supported.
+- **PIO budget while active:** bridge TX+RX (2 SMs) + master TX+RX (2 SMs) = 4 of
+  8; the snoop's 2 SMs are freed by `suspend()` first, so no contention.
+- **Register sweep semantics:** reads one register at a time (qty=1) so the map
+  shows exactly which registers answer. A **silent** register (no reply, no
+  exception) is the module's normal "nothing here / no tag" behaviour — same as a
+  missing tag on `0x000E` — so the sweep also doubles as a tag-presence probe.
+  `master tx/txraw` send arbitrary PDUs for poking undocumented function codes.
+- **Footgun guard:** while master mode is active, `reset`/`download`/`run`/`rst`/
+  `strap` are blocked (they would un-reset the RTL into bus contention with our
+  GP4 drive, or tear down the bridge UART). The user must `master off` first.
+- **⚠ UNVERIFIED on hardware — two assumptions to meter on the bench:**
+  1. The RTL **tri-states its RFID-UART TX pin while held in CHIP_EN reset**, so
+     our GP4 drive isn't fighting it. Meter the command net during `rst on`.
+  2. The **module stays powered with the RTL held off** (assumed always-on rail,
+     not gated by an RTL GPIO). If reads go silent the instant you `master on`,
+     suspect module power.
+  If contention is real, the fix is a series resistor on the GP4 tap (or tap the
+  module-RX pin directly). Noted in `config.h` and the firmware README.
+
 ## 2026-06-11 — Initial architecture
 
 - **Pi Pico (RP2040) as a permanent in-housing ISP bridge** for the feeder's

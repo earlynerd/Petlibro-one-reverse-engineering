@@ -55,7 +55,7 @@ serial ports:
 | Port | Role |
 |------|------|
 | CDC0 | Transparent USB↔RTL UART bridge (point any AmebaD flasher or terminal at it; auto-tracks baud) |
-| CDC1 | Control console (reset/boot macros, status) **+ live RFID snoop with inline Modbus/FDX-B decode** |
+| CDC1 | Control console (reset/boot macros, status) **+ live RFID snoop with inline Modbus/FDX-B decode** **+ RFID master mode** (hold the RTL in reset and drive the module directly to dump any register) |
 
 Build, wiring, flashing procedure, and the full command set are in
 [`firmware/pico-bridge/README.md`](firmware/pico-bridge/README.md). Quick start:
@@ -81,8 +81,15 @@ slave. Full writeup in [`Docs/RFID_PROTOCOL.md`](Docs/RFID_PROTOCOL.md). Highlig
   - `0x0011`(lo) = per-read signal/quality (not part of the ID)
 - Worked example (the collar in `Photos/`): country `130` + national
   `023370514455` → **`130023370514455`**.
-- **Presence** = whether the `0x000E` read is answered; no tag → the module
-  simply doesn't reply.
+- **Presence** is signalled out-of-band on a separate **tag-ready IRQ line**
+  (module → host), not via the UART — the RTL gates its Modbus polling on that
+  line, which is why the snoop sees silence with no tag. The `0x000E` register
+  itself always answers (master-mode probing returns the cached ID with a stale
+  quality byte when no tag is present).
+- **Active probing:** the bridge can also hold the RTL in reset and **become the
+  Modbus master itself** (`master on` → `master dump`), reading/writing any
+  register directly — how the still-fuzzy config/diagnostic registers get
+  characterised. See the [protocol doc](Docs/RFID_PROTOCOL.md#actively-probing-the-module-master-mode).
 
 The snoop firmware decodes this live, e.g.:
 
@@ -135,6 +142,8 @@ your own feeder, keep that file private.
 - [x] In-housing Pico bridge (flash + snoop), flashing proven end-to-end
 - [x] Full 8 MB stock dump + flash-map analysis
 - [x] RFID Modbus/FDX-B protocol decoded; live decoder in the snoop
+- [x] RFID master mode — Pico drives the module directly to dump any register
+      (implemented; pending bench verification of the two hardware assumptions)
 - [ ] Build a minimal custom AmebaD image (hello-world) and confirm it boots
 - [ ] Reimplement RFID read → lid actuation locally
 - [ ] Cut the AWS/MQTT cloud dependency

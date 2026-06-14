@@ -136,8 +136,64 @@ or live with `rfidparity r|h n|e|o`. The decoder labels every Modbus action
 markers on presence changes. Full protocol + register map:
 [`../../Docs/RFID_PROTOCOL.md`](../../Docs/RFID_PROTOCOL.md).
 
+## RFID **master** mode — drive the module directly
+
+A step beyond the passive snoop: the Pico can **become the Modbus master** and
+read/write any register on the JY-L601D itself — with the RTL out of the loop.
+This is how you dump the *whole* register map (not just the ones the RTL happens
+to poll) and probe the still-fuzzy config/diagnostic registers.
+
+It works by reusing the very same two lines the snoop taps, only now **GP4 is
+driven**:
+
+```
+TX (commands) GP4 @ 8O1  ──▶  module RX   (= the RTL→module "command" net)
+RX (replies)  GP5 @ 8E1  ◀──  module TX
+```
+
+`master on` runs the safe entry sequence: **(1)** holds the RTL in `CHIP_EN`
+reset so it stops mastering the bus and *releases* the command net, **(2)**
+suspends the snoop to free GP4/GP5, **(3)** brings up the two master UARTs
+(asymmetric parity preserved — we send 8O1, listen 8E1). `master off` reverses
+it and reboots the RTL.
+
+```
+master on                       # RTL held in reset, Pico takes the bus
+master init                     # optional: write 0x0000 = 0x0002 (RTL's boot enable)
+master dump                     # sweep 0x0000..0x00FF, print every register that answers
+master dump 0 0x40              # narrower/faster sweep (hex args)
+master read 000E 4              # read 4 regs @ 0x000E (the tag block) — needs a tag present
+master write 0000 0002          # write a single register
+master tx 03 03 00 0E 00 04     # send a raw PDU (CRC appended), print the raw reply
+master off                      # release the bus, snoop back on, RTL boots
+```
+
+The sweep distinguishes three responses, and the split is part of the map:
+**answered** (a live base — block-read and printed), **exception `0x02`** (an
+address the module doesn't implement — ~251 of them in a full sweep, tallied
+with a code histogram), and **silent** (a *recognised but inactive* register —
+e.g. `0x0050`, which is silent with no tag and becomes a live 5-register block
+once a tag is read). Silent and exception addresses are tallied, not printed
+per-line; whichever category is rare is listed so anomalies surface. The
+per-transaction reply timeout is `master timeout <ms>` (default 40 ms); drop it
+(`master timeout 15`) to make a full sweep ~4 s, and any keypress aborts it.
+
+(Note: the tag `0x000E` register itself *always* answers — presence is signalled
+to the host on a separate IRQ line, not by UART silence. See the protocol doc's
+[Tag-presence semantics](../../Docs/RFID_PROTOCOL.md#tag-presence-semantics).)
+
+> ⚠️ **Two hardware assumptions to verify on the bench before trusting this:**
+> **(1)** the RTL must tri-state its RFID-UART TX pin while held in `CHIP_EN`
+> reset (otherwise GP4 fights it — meter the command net during `rst on`);
+> **(2)** the module must stay powered with the RTL held off (assumed always-on
+> rail). If reads go silent the instant you `master on`, suspect one of these.
+> The fix for contention is a series resistor on the GP4 tap. While master mode
+> is active the `reset`/`download`/`run`/`rst`/`strap` verbs are **blocked**
+> (they would create exactly that contention) — `master off` first.
+
 ## Control console commands
 
 `help`, `status`, `reset`, `download`|`boot`, `run`, `rst on|off`,
 `strap on|off`, `baud <n>`, `rfidbaud <n>`, `rfidparity [r|h] n|e|o`,
-`snoop on|off`, `mon on|off`.
+`snoop on|off`, `mon on|off`,
+`master on|off|init|read|write|dump|tx|txraw|timeout`.

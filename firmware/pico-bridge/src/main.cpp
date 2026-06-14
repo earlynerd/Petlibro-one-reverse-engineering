@@ -2,6 +2,7 @@
 #include "config.h"
 #include "rtl_bridge.h"
 #include "rfid_snoop.h"
+#include "rfid_master.h"
 #include "control_console.h"
 
 #ifdef USE_TINYUSB
@@ -26,8 +27,11 @@ void setup() {
 
   Rtl.begin();
   Snoop.begin();
+  // RfidMaster is constructed but NOT begun here: it would claim GP4/GP5 that
+  // the snoop already owns. It is activated on demand by `master on`, which
+  // first suspends the snoop and holds the RTL in reset.
   Rtl.setMonitor(&USBControl);          // bridge tap output goes to the control port
-  Console.begin(&USBControl, &Rtl, &Snoop);
+  Console.begin(&USBControl, &Rtl, &Snoop, &Master);
 
   digitalWrite(STATUS_LED_PIN, LOW);
 }

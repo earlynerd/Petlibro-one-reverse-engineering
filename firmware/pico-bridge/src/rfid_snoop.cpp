@@ -80,6 +80,7 @@ void RfidSnoop::begin() {
 }
 
 void RfidSnoop::restart() {
+  if (_suspended) return;            // pins are owned by master mode -- don't touch
   _readerUart.end();
   _readerUart.begin(_baud, _readerFormat);
   if (_hostEnabled) {
@@ -88,26 +89,51 @@ void RfidSnoop::restart() {
   }
 }
 
+// Free both PIO UARTs so RFID master mode can claim GP4/GP5. Stays suspended
+// (service() does nothing, lifecycle calls just update stored config) until
+// resume() re-inits the receivers.
+void RfidSnoop::suspend() {
+  if (_suspended) return;
+  _readerUart.end();
+  if (_hostEnabled) _hostUart.end();
+  _reader.len = 0;
+  _host.len   = 0;
+  _suspended = true;
+}
+
+void RfidSnoop::resume() {
+  if (!_suspended) return;
+  _suspended = false;                // clear first so restart() actually runs
+  _reader.len = 0;
+  _host.len   = 0;
+  _readerUart.begin(_baud, _readerFormat);
+  if (_hostEnabled) _hostUart.begin(_baud, _hostFormat);
+}
+
 void RfidSnoop::setBaud(uint32_t baud) {
   if (!baud || baud == _baud) return;
   _baud = baud;
+  if (_suspended) return;            // stored; applied on resume()
   restart();
 }
 
 void RfidSnoop::setFormat(int channel, uint16_t fmt) {
   if (channel == 0) {
     _readerFormat = fmt;
+    if (_suspended) return;          // stored; applied on resume()
     _readerUart.end();
     _readerUart.begin(_baud, _readerFormat);
   } else {
     if (!_hostEnabled) return;
     _hostFormat = fmt;
+    if (_suspended) return;          // stored; applied on resume()
     _hostUart.end();
     _hostUart.begin(_baud, _hostFormat);
   }
 }
 
 void RfidSnoop::service(Stream& out) {
+  if (_suspended) return;            // master mode owns the pins
   // Drain the master (host) tap first so a request is decoded before its reply
   // within the same pass -- the reply needs the request's register address.
   if (_hostEnabled) serviceChannel(_host, out);

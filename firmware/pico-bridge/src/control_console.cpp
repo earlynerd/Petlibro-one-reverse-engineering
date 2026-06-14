@@ -5,10 +5,11 @@
 
 ControlConsole Console;
 
-void ControlConsole::begin(Stream* io, RtlBridge* rtl, RfidSnoop* snoop) {
+void ControlConsole::begin(Stream* io, RtlBridge* rtl, RfidSnoop* snoop, RfidMaster* master) {
   _io = io;
   _rtl = rtl;
   _snoop = snoop;
+  _master = master;
   _len = 0;
 }
 
@@ -24,6 +25,15 @@ void ControlConsole::printHelp() {
   _io->println(F("  rfidparity [r|h] n|e|o  RFID parity per tap (r=module/8E1, h=RTL/8O1; omit=both)"));
   _io->println(F("  snoop on|off     enable/disable RFID frame printing"));
   _io->println(F("  mon on|off       tap bridge traffic (> host->RTL, < RTL->host)"));
+  _io->println(F("  --- RFID master mode (Pico drives the module; holds RTL in reset) ---"));
+  _io->println(F("  master on|off    enter/leave master mode (reset RTL + suspend snoop)"));
+  _io->println(F("  master init      write reg 0x0000 = 0x0002 (the RTL's boot enable)"));
+  _io->println(F("  master read <addr> [qty]   read holding register(s) (hex addr)"));
+  _io->println(F("  master write <addr> <val>  write single register (hex)"));
+  _io->println(F("  master dump [first] [last] [blkqty] find base addrs + block-read each (def 0x0000..0x00FF, 16)"));
+  _io->println(F("  master tx <hex...>         send PDU + auto-CRC, print raw reply"));
+  _io->println(F("  master txraw <hex...>      send bytes verbatim (you supply CRC)"));
+  _io->println(F("  master timeout <ms>        per-transaction reply timeout"));
   _io->println(F("  status           show line states, bauds, counters"));
   _io->println(F("  help             this list"));
 }
@@ -35,11 +45,15 @@ void ControlConsole::printStatus() {
   _io->printf("  DL strap (PA7): %s\r\n", _rtl->strapAsserted() ? "ASSERTED (low)" : "released");
   _io->printf("  host->RTL     : %lu bytes\r\n", (unsigned long)_rtl->bytesToRtl());
   _io->printf("  RTL->host     : %lu bytes\r\n", (unsigned long)_rtl->bytesFromRtl());
-  _io->printf("  RFID snoop    : %s\r\n", _snoop->enabled() ? "on" : "off");
+  _io->printf("  RFID snoop    : %s%s\r\n", _snoop->enabled() ? "on" : "off",
+              _snoop->suspended() ? " (SUSPENDED — master mode owns the pins)" : "");
   _io->printf("  RFID reader (module TX, 8E1): %lu frames / %lu bytes\r\n",
               (unsigned long)_snoop->framesOn(0), (unsigned long)_snoop->bytesOn(0));
   _io->printf("  RFID host   (RTL TX,    8O1): %lu frames / %lu bytes\r\n",
               (unsigned long)_snoop->framesOn(1), (unsigned long)_snoop->bytesOn(1));
+  _io->printf("  RFID master   : %s (timeout %lu ms)\r\n",
+              _master->active() ? "ACTIVE — Pico is the Modbus master" : "off",
+              (unsigned long)_master->timeout());
 }
 
 // Returns true if `s` equals `kw` (case-sensitive, whole token).
@@ -56,22 +70,29 @@ void ControlConsole::handleLine(char* line) {
   } else if (is(verb, "status") || is(verb, "st")) {
     printStatus();
   } else if (is(verb, "reset")) {
+    if (masterGuard()) return;
     _rtl->reset();
     _io->println(F("ok: reset pulsed (application)"));
   } else if (is(verb, "download") || is(verb, "boot") || is(verb, "dl")) {
+    if (masterGuard()) return;
     _rtl->enterDownload();
     _io->println(F("ok: download-mode macro run (verify on bench!)"));
   } else if (is(verb, "run")) {
+    if (masterGuard()) return;
     _rtl->run();
     _io->println(F("ok: released strap, reset into application"));
   } else if (is(verb, "rst")) {
+    if (masterGuard()) return;
     if (arg && is(arg, "on"))  { _rtl->assertReset(true);  _io->println(F("ok: RST held")); }
     else if (arg && is(arg, "off")) { _rtl->assertReset(false); _io->println(F("ok: RST released")); }
     else _io->println(F("usage: rst on|off"));
   } else if (is(verb, "strap")) {
+    if (masterGuard()) return;
     if (arg && is(arg, "on"))  { _rtl->driveStrap(true);  _io->println(F("ok: strap held low (UART offline)")); }
     else if (arg && is(arg, "off")) { _rtl->driveStrap(false); _io->println(F("ok: strap released (UART online)")); }
     else _io->println(F("usage: strap on|off"));
+  } else if (is(verb, "master") || is(verb, "m")) {
+    handleMaster(arg);
   } else if (is(verb, "baud")) {
     if (arg) { uint32_t b = strtoul(arg, nullptr, 10); _rtl->setBaud(b);
                _io->printf("ok: bridge baud = %lu\r\n", (unsigned long)b); }
@@ -118,6 +139,138 @@ void ControlConsole::handleLine(char* line) {
   } else {
     _io->printf("? unknown command '%s' (try 'help')\r\n", verb);
   }
+}
+
+// Block host reset/strap verbs while master mode owns GP4: releasing the RTL
+// from reset would make it drive the command net against our TX, and toggling
+// the strap tears down the bridge UART mid-session. Make the user exit first.
+bool ControlConsole::masterGuard() {
+  if (_master->active()) {
+    _io->println(F("blocked: RFID master mode is active — 'master off' first"));
+    return true;
+  }
+  return false;
+}
+
+// Print n bytes as space-separated hex.
+static void printHex(Stream* io, const uint8_t* b, size_t n) {
+  for (size_t i = 0; i < n; i++) io->printf(" %02X", b[i]);
+}
+
+void ControlConsole::handleMaster(char* sub) {
+  if (!sub) {
+    _io->printf("master: %s. Subcommands: on off init read write dump tx txraw timeout\r\n",
+                _master->active() ? "ACTIVE" : "off");
+    return;
+  }
+
+  // --- mode entry / exit ---------------------------------------------------
+  if (is(sub, "on") || is(sub, "enter")) {
+    if (_master->active()) { _io->println(F("master: already active")); return; }
+    _rtl->assertReset(true);          // hold the RTL off -> it releases the command net
+    _snoop->suspend();                // free GP4/GP5 for us to claim
+    if (!_master->begin()) {          // claim GP4(TX,8O1) + GP5(RX,8E1)
+      _snoop->resume();
+      _rtl->assertReset(false);
+      _io->println(F("master: begin failed (host/command pin disabled in config?)"));
+      return;
+    }
+    _io->println(F("ok: MASTER MODE — RTL held in reset, snoop suspended, Pico drives the module"));
+    _io->println(F("    (verify on the bench the RTL releases the command line; 'master off' to restore)"));
+    return;
+  }
+  if (is(sub, "off") || is(sub, "exit")) {
+    if (!_master->active()) { _io->println(F("master: not active")); return; }
+    _master->end();                   // release GP4 (back to hi-Z input)
+    _snoop->resume();                 // snoop reclaims GP4/GP5 (RX-only)
+    _rtl->assertReset(false);         // let the host boot again
+    _io->println(F("ok: master off — snoop resumed, RTL released (booting application)"));
+    return;
+  }
+  if (is(sub, "timeout")) {
+    char* a = strtok(nullptr, " \t");
+    if (a) { _master->setTimeout(strtoul(a, nullptr, 10));
+             _io->printf("ok: master timeout = %lu ms\r\n", (unsigned long)_master->timeout()); }
+    else _io->println(F("usage: master timeout <ms>"));
+    return;
+  }
+
+  // --- everything below needs the bus --------------------------------------
+  if (!_master->active()) {
+    _io->println(F("master: not active — run 'master on' first"));
+    return;
+  }
+
+  if (is(sub, "init")) {
+    bool ok = _master->writeReg(0x0000, 0x0002);
+    _io->printf("master init: write 0x0000 = 0x0002 -> %s\r\n", ok ? "ACK" : "no/!ack");
+    return;
+  }
+  if (is(sub, "read") || is(sub, "rd")) {
+    char* aA = strtok(nullptr, " \t");
+    char* aQ = strtok(nullptr, " \t");
+    if (!aA) { _io->println(F("usage: master read <addr-hex> [qty]")); return; }
+    uint16_t addr = (uint16_t)strtoul(aA, nullptr, 16);
+    uint16_t qty  = aQ ? (uint16_t)strtoul(aQ, nullptr, 10) : 1;
+    if (qty < 1) qty = 1;
+    if (qty > RfidMaster::kMaxBlockRegs) qty = (uint16_t)RfidMaster::kMaxBlockRegs;  // reply must fit our buffers
+    uint16_t v[RfidMaster::kMaxBlockRegs];
+    int r = _master->readRegs(addr, qty, v, RfidMaster::kMaxBlockRegs);
+    if (r > 0) {
+      for (int i = 0; i < r; i++)
+        _io->printf("  0x%04X = 0x%04X  (%u)\r\n", (unsigned)(addr + i), v[i], v[i]);
+    } else if (r == RfidMaster::kTimeout) {
+      _io->printf("  0x%04X : no reply (silent — register absent or no tag)\r\n", addr);
+    } else if (r == RfidMaster::kBadFrame) {
+      _io->printf("  0x%04X : reply failed CRC/length check\r\n", addr);
+    } else {
+      _io->printf("  0x%04X : EXCEPTION 0x%02X\r\n", addr, (unsigned)(-r));
+    }
+    return;
+  }
+  if (is(sub, "write") || is(sub, "wr")) {
+    char* aA = strtok(nullptr, " \t");
+    char* aV = strtok(nullptr, " \t");
+    if (!aA || !aV) { _io->println(F("usage: master write <addr-hex> <val-hex>")); return; }
+    uint16_t addr = (uint16_t)strtoul(aA, nullptr, 16);
+    uint16_t val  = (uint16_t)strtoul(aV, nullptr, 16);
+    bool ok = _master->writeReg(addr, val);
+    _io->printf("master write 0x%04X = 0x%04X -> %s\r\n", addr, val, ok ? "ACK" : "no/!ack");
+    return;
+  }
+  if (is(sub, "dump")) {
+    char* aF = strtok(nullptr, " \t");
+    char* aL = strtok(nullptr, " \t");
+    char* aB = strtok(nullptr, " \t");
+    uint16_t first = aF ? (uint16_t)strtoul(aF, nullptr, 16) : RFID_MASTER_DUMP_FIRST;
+    uint16_t last  = aL ? (uint16_t)strtoul(aL, nullptr, 16) : RFID_MASTER_DUMP_LAST;
+    uint16_t blk   = aB ? (uint16_t)strtoul(aB, nullptr, 10) : RFID_MASTER_BLOCK_QTY;
+    _master->dump(*_io, first, last, blk);
+    return;
+  }
+  if (is(sub, "tx") || is(sub, "txraw")) {
+    bool appendCrc = is(sub, "tx");
+    uint8_t pdu[32];
+    size_t  n = 0;
+    char*   t;
+    while ((t = strtok(nullptr, " \t")) != nullptr && n < sizeof(pdu))
+      pdu[n++] = (uint8_t)strtoul(t, nullptr, 16);
+    if (n < (appendCrc ? 2u : 4u)) {
+      _io->printf("usage: master %s <hex bytes...>%s\r\n", sub,
+                  appendCrc ? "  (CRC appended for you)" : "  (include the 2 CRC bytes)");
+      return;
+    }
+    uint8_t rsp[64];
+    _io->print(F("  tx:"));   printHex(_io, pdu, n);
+    if (appendCrc) _io->print(F(" +crc"));
+    _io->println();
+    int r = _master->transact(pdu, n, appendCrc, rsp, sizeof(rsp));
+    if (r > 0) { _io->printf("  rx %d:", r); printHex(_io, rsp, (size_t)r); _io->println(); }
+    else       _io->println(F("  rx: no reply (timeout)"));
+    return;
+  }
+
+  _io->printf("? unknown master subcommand '%s' (try 'help')\r\n", sub);
 }
 
 void ControlConsole::service() {
