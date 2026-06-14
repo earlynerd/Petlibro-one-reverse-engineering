@@ -144,7 +144,14 @@ your own feeder, keep that file private.
 - [x] RFID Modbus/FDX-B protocol decoded; live decoder in the snoop
 - [x] RFID master mode — Pico drives the module directly to dump any register
       (implemented; pending bench verification of the two hardware assumptions)
-- [ ] Build a minimal custom AmebaD image (hello-world) and confirm it boots
+- [x] Custom-firmware toolchain stood up (PlatformIO + AmebaD; board
+      `sparkfun_awcu488` = RTL8721DM) — hello-world **builds** to a flashable
+      `km0_km4_image2.bin` (see [`firmware/rtl8721dm-hello/`](firmware/rtl8721dm-hello/))
+- [x] Flashed the hello-world via the bridge — **boots and runs on hardware**
+      (heartbeat on LOGUART, confirmed through the bridge port)
+- [ ] Reimplement RFID read → lid actuation locally (Arduino core likely
+      sufficient: UART Modbus to the module + GPIO for the lid + the tag IRQ)
+- [ ] Characterize the RFID tag-ready IRQ line (deferred to RTL-firmware phase)
 - [ ] Reimplement RFID read → lid actuation locally
 - [ ] Cut the AWS/MQTT cloud dependency
 
