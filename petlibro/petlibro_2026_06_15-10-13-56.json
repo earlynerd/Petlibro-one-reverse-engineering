@@ -1,0 +1,949 @@
+{
+  "version": 1,
+  "fileType": "PCB_REVERSE_ENGINEERING_AUTOSAVE",
+  "savedAt": "2026-06-15T17:13:56.426Z",
+  "view": {
+    "currentView": "overlay",
+    "viewScale": 0.25,
+    "cameraWorldCenter": {
+      "x": 3019.4946731210503,
+      "y": 267.0019491007115
+    },
+    "showBothLayers": true,
+    "selectedDrawingLayer": "top"
+  },
+  "images": {
+    "top": {
+      "name": "top.png",
+      "width": 5218,
+      "height": 3252,
+      "filePath": "images/top.png",
+      "x": 2414.0803114786027,
+      "y": 410.9670267510073,
+      "scale": 1,
+      "rotation": 0,
+      "flipX": false,
+      "flipY": false,
+      "skewX": 0,
+      "skewY": 0,
+      "keystoneV": 0,
+      "keystoneH": 0,
+      "brightness": 79,
+      "contrast": 200
+    },
+    "bottom": {
+      "name": "bottom.png",
+      "width": 5191,
+      "height": 3217,
+      "filePath": "images/bottom.png",
+      "x": 2417.0803114786027,
+      "y": 425.9670267510073,
+      "scale": 1,
+      "rotation": 0,
+      "flipX": false,
+      "flipY": false,
+      "skewX": 0,
+      "skewY": 0,
+      "keystoneV": 0,
+      "keystoneH": 0,
+      "brightness": 79,
+      "contrast": 200
+    },
+    "extra": [],
+    "layerOrder": [
+      0,
+      1
+    ]
+  },
+  "projectDirectoryName": "petlibro",
+  "drawing": {
+    "drawingStrokes": [
+      {
+        "id": "1781543479288-via",
+        "points": [
+          {
+            "id": 1,
+            "x": 836.9918819994834,
+            "y": 20.666132076978784
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543482558-via",
+        "points": [
+          {
+            "id": 2,
+            "x": 1539.7696819994835,
+            "y": 609.5550320769789
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543483743-via",
+        "points": [
+          {
+            "id": 3,
+            "x": 1573.1029819994835,
+            "y": 634.5550320769789
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543485251-via",
+        "points": [
+          {
+            "id": 4,
+            "x": 1873.1029819994833,
+            "y": 634.5550320769789
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543487322-via",
+        "points": [
+          {
+            "id": 5,
+            "x": 1898.1029819994833,
+            "y": 665.1106320769788
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543490150-via",
+        "points": [
+          {
+            "id": 6,
+            "x": 1914.7696819994835,
+            "y": 603.9995320769788
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543492234-via",
+        "points": [
+          {
+            "id": 7,
+            "x": 1292.5473819994836,
+            "y": 956.7772320769789
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543494506-via",
+        "points": [
+          {
+            "id": 8,
+            "x": 2381.436281999484,
+            "y": 409.55503207697893
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543496345-via",
+        "points": [
+          {
+            "id": 9,
+            "x": 2448.1029819994837,
+            "y": 453.99953207697877
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543497763-via",
+        "points": [
+          {
+            "id": 10,
+            "x": 2484.214081999484,
+            "y": 440.11063207697885
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543499232-via",
+        "points": [
+          {
+            "id": 11,
+            "x": 2614.7696819994835,
+            "y": 442.88833207697894
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543501025-via",
+        "points": [
+          {
+            "id": 12,
+            "x": 2561.9918819994837,
+            "y": 226.22173207697892
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543503890-via",
+        "points": [
+          {
+            "id": 13,
+            "x": 2861.9918819994837,
+            "y": 145.66613207697878
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543505758-via",
+        "points": [
+          {
+            "id": 14,
+            "x": 2861.9918819994837,
+            "y": 978.9995320769788
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543507197-via",
+        "points": [
+          {
+            "id": 15,
+            "x": 2936.9918819994837,
+            "y": 1017.8883320769789
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543508391-via",
+        "points": [
+          {
+            "id": 16,
+            "x": 2867.5473819994836,
+            "y": 1203.999532076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543509703-via",
+        "points": [
+          {
+            "id": 17,
+            "x": 2870.325181999484,
+            "y": 1259.555032076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543514354-via",
+        "points": [
+          {
+            "id": 18,
+            "x": 2884.214081999484,
+            "y": 1592.8883320769787
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543518591-via",
+        "points": [
+          {
+            "id": 19,
+            "x": 2867.5473819994836,
+            "y": 1645.666132076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543519919-via",
+        "points": [
+          {
+            "id": 20,
+            "x": 2909.214081999484,
+            "y": 1667.8883320769787
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543521380-via",
+        "points": [
+          {
+            "id": 21,
+            "x": 2939.7696819994835,
+            "y": 1701.2217320769787
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543523069-via",
+        "points": [
+          {
+            "id": 22,
+            "x": 1806.4362819994835,
+            "y": 1545.666132076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543523969-via",
+        "points": [
+          {
+            "id": 23,
+            "x": 1775.8807819994836,
+            "y": 1490.110632076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543526856-via",
+        "points": [
+          {
+            "id": 24,
+            "x": 1742.5473819994836,
+            "y": 1434.555032076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543529744-via",
+        "points": [
+          {
+            "id": 25,
+            "x": 1809.2140819994834,
+            "y": 1376.221732076979
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543533043-via",
+        "points": [
+          {
+            "id": 26,
+            "x": 1489.7696819994835,
+            "y": 1606.7772320769786
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      },
+      {
+        "id": "1781543535226-via",
+        "points": [
+          {
+            "id": 27,
+            "x": 1636.9918819994837,
+            "y": 1606.7772320769786
+          }
+        ],
+        "color": "#2CA02C",
+        "size": 30,
+        "layer": "bottom",
+        "type": "via",
+        "viaType": "Via"
+      }
+    ],
+    "vias": [
+      {
+        "id": "1781543479288-via",
+        "pointId": 1,
+        "x": 836.9918819994834,
+        "y": 20.666132076978784,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543482558-via",
+        "pointId": 2,
+        "x": 1539.7696819994835,
+        "y": 609.5550320769789,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543483743-via",
+        "pointId": 3,
+        "x": 1573.1029819994835,
+        "y": 634.5550320769789,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543485251-via",
+        "pointId": 4,
+        "x": 1873.1029819994833,
+        "y": 634.5550320769789,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543487322-via",
+        "pointId": 5,
+        "x": 1898.1029819994833,
+        "y": 665.1106320769788,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543490150-via",
+        "pointId": 6,
+        "x": 1914.7696819994835,
+        "y": 603.9995320769788,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543492234-via",
+        "pointId": 7,
+        "x": 1292.5473819994836,
+        "y": 956.7772320769789,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543494506-via",
+        "pointId": 8,
+        "x": 2381.436281999484,
+        "y": 409.55503207697893,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543496345-via",
+        "pointId": 9,
+        "x": 2448.1029819994837,
+        "y": 453.99953207697877,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543497763-via",
+        "pointId": 10,
+        "x": 2484.214081999484,
+        "y": 440.11063207697885,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543499232-via",
+        "pointId": 11,
+        "x": 2614.7696819994835,
+        "y": 442.88833207697894,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543501025-via",
+        "pointId": 12,
+        "x": 2561.9918819994837,
+        "y": 226.22173207697892,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543503890-via",
+        "pointId": 13,
+        "x": 2861.9918819994837,
+        "y": 145.66613207697878,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543505758-via",
+        "pointId": 14,
+        "x": 2861.9918819994837,
+        "y": 978.9995320769788,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543507197-via",
+        "pointId": 15,
+        "x": 2936.9918819994837,
+        "y": 1017.8883320769789,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543508391-via",
+        "pointId": 16,
+        "x": 2867.5473819994836,
+        "y": 1203.999532076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543509703-via",
+        "pointId": 17,
+        "x": 2870.325181999484,
+        "y": 1259.555032076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543514354-via",
+        "pointId": 18,
+        "x": 2884.214081999484,
+        "y": 1592.8883320769787,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543518591-via",
+        "pointId": 19,
+        "x": 2867.5473819994836,
+        "y": 1645.666132076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543519919-via",
+        "pointId": 20,
+        "x": 2909.214081999484,
+        "y": 1667.8883320769787,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543521380-via",
+        "pointId": 21,
+        "x": 2939.7696819994835,
+        "y": 1701.2217320769787,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543523069-via",
+        "pointId": 22,
+        "x": 1806.4362819994835,
+        "y": 1545.666132076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543523969-via",
+        "pointId": 23,
+        "x": 1775.8807819994836,
+        "y": 1490.110632076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543526856-via",
+        "pointId": 24,
+        "x": 1742.5473819994836,
+        "y": 1434.555032076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543529744-via",
+        "pointId": 25,
+        "x": 1809.2140819994834,
+        "y": 1376.221732076979,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543533043-via",
+        "pointId": 26,
+        "x": 1489.7696819994835,
+        "y": 1606.7772320769786,
+        "size": 30,
+        "color": "#2CA02C"
+      },
+      {
+        "id": "1781543535226-via",
+        "pointId": 27,
+        "x": 1636.9918819994837,
+        "y": 1606.7772320769786,
+        "size": 30,
+        "color": "#2CA02C"
+      }
+    ],
+    "tracesTop": [],
+    "tracesBottom": [],
+    "componentsTop": [],
+    "componentsBottom": [],
+    "grounds": [],
+    "powers": []
+  },
+  "powerBuses": [
+    {
+      "id": "powerbus-default",
+      "name": "+5VDC",
+      "voltage": "+5",
+      "color": "#ff0000"
+    }
+  ],
+  "groundBuses": [
+    {
+      "id": "groundbus-circuit",
+      "name": "GND",
+      "color": "#000000"
+    }
+  ],
+  "groups": [],
+  "pointIdCounter": 28,
+  "designatorCounters": {},
+  "autoAssignDesignators": true,
+  "useGlobalDesignatorCounters": false,
+  "traceColors": {
+    "top": "#AA4499",
+    "bottom": "#F781BF"
+  },
+  "traceSizes": {
+    "top": 8,
+    "bottom": 6
+  },
+  "padColors": {
+    "top": "#0072B2",
+    "bottom": "#56B4E9"
+  },
+  "padSizes": {
+    "top": 10,
+    "bottom": 18
+  },
+  "componentColors": {
+    "top": "#6A3D9A",
+    "bottom": "#9467BD"
+  },
+  "componentSizes": {
+    "top": 18,
+    "bottom": 18
+  },
+  "testPointColors": {
+    "top": "#FFFF00",
+    "bottom": "#FFFF00"
+  },
+  "testPointSizes": {
+    "top": 15,
+    "bottom": 15
+  },
+  "componentConnectionColor": "#E69F00",
+  "componentConnectionSize": 4,
+  "toolLayerDefaults": {
+    "trace": "top",
+    "pad": "top",
+    "testPoint": "top",
+    "component": "top"
+  },
+  "toolSettings": {
+    "trace": {
+      "color": "#AA4499",
+      "size": 8
+    },
+    "via": {
+      "color": "#2CA02C",
+      "size": 30
+    },
+    "pad": {
+      "color": "#0072B2",
+      "size": 10
+    },
+    "component": {
+      "color": "#6A3D9A",
+      "size": 35
+    },
+    "ground": {
+      "color": "#000000",
+      "size": 25
+    },
+    "power": {
+      "color": "#ff0000",
+      "size": 25
+    }
+  },
+  "locks": {
+    "areImagesLocked": false,
+    "areViasLocked": false,
+    "arePadsLocked": false,
+    "areTracesLocked": false,
+    "areComponentsLocked": false,
+    "areGroundNodesLocked": false,
+    "arePowerNodesLocked": false
+  },
+  "visibility": {
+    "showViasLayer": true,
+    "showTopPadsLayer": true,
+    "showBottomPadsLayer": true,
+    "showTopTracesLayer": true,
+    "showBottomTracesLayer": true,
+    "showTopComponents": true,
+    "showBottomComponents": true,
+    "showPowerLayer": true,
+    "showGroundLayer": true,
+    "showConnectionsLayer": true,
+    "showTraceCornerDots": false,
+    "showTraceEndDots": true,
+    "componentIconDisplay": "both",
+    "netHighlightDimmingLevel": 70,
+    "showICPinNumbers": true,
+    "showICPinNames": true,
+    "pinNumberPosition": "upper-right",
+    "pinNumberFontSize": 11
+  },
+  "autoSave": {
+    "enabled": true,
+    "interval": 5,
+    "baseName": "petlibro"
+  },
+  "projectInfo": {
+    "name": "petlibro"
+  },
+  "aiSettings": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash"
+  },
+  "projectNotes": [],
+  "symptomColumns": [
+    "Item",
+    "Symptom"
+  ],
+  "noteColumns": [
+    "Item",
+    "Notes"
+  ],
+  "projectMetadata": {
+    "productName": "petlibro one",
+    "modelNumber": "plaf301",
+    "manufacturer": "petlibro",
+    "dateManufactured": "2026-06-15"
+  },
+  "troubleshootingResults": null,
+  "dismissedErrors": [],
+  "nodeProperties": {},
+  "homeViews": {
+    "0": {
+      "pcbReferenceX": 1358.0803114786027,
+      "pcbReferenceY": 1016.567032854523,
+      "x": 0,
+      "y": 0,
+      "zoom": 0.7464959999999999,
+      "viewRotation": 0,
+      "viewFlipX": false,
+      "isBottomView": false,
+      "transparency": 19,
+      "showTopImage": true,
+      "showBottomImage": true,
+      "showViasLayer": true,
+      "showTopTracesLayer": true,
+      "showBottomTracesLayer": true,
+      "showTopPadsLayer": true,
+      "showBottomPadsLayer": true,
+      "showTopTestPointsLayer": true,
+      "showBottomTestPointsLayer": true,
+      "showTopComponents": true,
+      "showBottomComponents": true,
+      "showPowerLayer": true,
+      "showGroundLayer": true,
+      "showConnectionsLayer": true
+    }
+  },
+  "toolInstances": {
+    "via": {
+      "id": "via",
+      "name": "Via",
+      "color": "#2CA02C",
+      "size": 30
+    },
+    "padTop": {
+      "id": "padTop",
+      "name": "Pad (Top)",
+      "color": "#0072B2",
+      "size": 10
+    },
+    "padBottom": {
+      "id": "padBottom",
+      "name": "Pad (Bottom)",
+      "color": "#56B4E9",
+      "size": 10
+    },
+    "testPointTop": {
+      "id": "testPointTop",
+      "name": "Test Point (Top)",
+      "color": "#FFFF00",
+      "size": 15
+    },
+    "testPointBottom": {
+      "id": "testPointBottom",
+      "name": "Test Point (Bottom)",
+      "color": "#FFFF00",
+      "size": 15
+    },
+    "traceTop": {
+      "id": "traceTop",
+      "name": "Trace (Top)",
+      "color": "#AA4499",
+      "size": 8
+    },
+    "traceBottom": {
+      "id": "traceBottom",
+      "name": "Trace (Bottom)",
+      "color": "#F781BF",
+      "size": 8
+    },
+    "componentTop": {
+      "id": "componentTop",
+      "name": "Component (Top)",
+      "color": "#6A3D9A",
+      "size": 35
+    },
+    "componentBottom": {
+      "id": "componentBottom",
+      "name": "Component (Bottom)",
+      "color": "#9467BD",
+      "size": 35
+    },
+    "power": {
+      "id": "power",
+      "name": "Power",
+      "color": "#ff0000",
+      "size": 25
+    },
+    "ground": {
+      "id": "ground",
+      "name": "Ground",
+      "color": "#000000",
+      "size": 25
+    }
+  },
+  "projectStats": {
+    "sessionCount": 4,
+    "lastPromptDate": null,
+    "lastPromptSession": 0,
+    "totalWorkTimeMs": 1620000,
+    "donatedDate": null,
+    "declinedDate": null,
+    "bomsGenerated": 0,
+    "netlistsGenerated": 0,
+    "componentsIdentified": 0,
+    "schematicsGenerated": 0,
+    "troubleshootingAnalyses": 0,
+    "explainCircuitRuns": 0,
+    "datasheetExtractions": 0,
+    "measurementRuns": 0,
+    "errorCheckRuns": 0
+  }
+}

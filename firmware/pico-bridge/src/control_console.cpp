@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <hardware/gpio.h>
 #include "config.h"
 #include "control_console.h"
 
@@ -25,6 +26,9 @@ void ControlConsole::printHelp() {
   _io->println(F("  rfidparity [r|h] n|e|o  RFID parity per tap (r=module/8E1, h=RTL/8O1; omit=both)"));
   _io->println(F("  snoop on|off     enable/disable RFID frame printing"));
   _io->println(F("  mon on|off       tap bridge traffic (> host->RTL, < RTL->host)"));
+  _io->println(F("  rfinject 4|5 0|1 drive GP4(RTL-TX net)/GP5(module-TX net) to find the RTL RFID-UART pins"));
+  _io->println(F("  rfinject off     release GP4/GP5, resume snoop"));
+  _io->println(F("  pwen 1|0|read|off  GP6 = module PWEN: 1=power module ON, read/scan to trace its RTL pin"));
   _io->println(F("  --- RFID master mode (Pico drives the module; holds RTL in reset) ---"));
   _io->println(F("  master on|off    enter/leave master mode (reset RTL + suspend snoop)"));
   _io->println(F("  master init      write reg 0x0000 = 0x0002 (the RTL's boot enable)"));
@@ -93,6 +97,49 @@ void ControlConsole::handleLine(char* line) {
     else _io->println(F("usage: strap on|off"));
   } else if (is(verb, "master") || is(verb, "m")) {
     handleMaster(arg);
+  } else if (is(verb, "rfinject") || is(verb, "rfi")) {
+    // Inject a static level onto an RFID UART net via the Pico's tap, so the
+    // RTL pin on that same net can be found by scanning the RTL (no module power
+    // needed). GP4 = RTL->module command net (find RFID-TX); GP5 = module->RTL
+    // reply net (find RFID-RX). Suspends the snoop; never resets the RTL.
+    if (masterGuard()) return;
+    char* arg2 = strtok(nullptr, " \t");
+    if (arg && is(arg, "off")) {
+      gpio_init(RFID_HOST_RX_PIN);   gpio_set_dir(RFID_HOST_RX_PIN, GPIO_IN);
+      gpio_init(RFID_READER_RX_PIN); gpio_set_dir(RFID_READER_RX_PIN, GPIO_IN);
+      _snoop->resume();
+      _io->println(F("ok: rfinject off — GP4/GP5 released, snoop resumed"));
+    } else if (arg && arg2 && (is(arg, "4") || is(arg, "5"))) {
+      int pin = is(arg, "4") ? RFID_HOST_RX_PIN : RFID_READER_RX_PIN;
+      int lvl = (atoi(arg2) != 0) ? 1 : 0;
+      _snoop->suspend();   // free GP4/GP5 from the snoop PIO UARTs
+      gpio_init(RFID_HOST_RX_PIN);   gpio_set_dir(RFID_HOST_RX_PIN, GPIO_IN);   // both to input,
+      gpio_init(RFID_READER_RX_PIN); gpio_set_dir(RFID_READER_RX_PIN, GPIO_IN); // then drive one
+      gpio_init(pin); gpio_set_dir(pin, GPIO_OUT); gpio_put(pin, lvl);
+      _io->printf("ok: GP%d = %d  (%s net) — now scan the RTL for the pin that follows\r\n",
+                  pin, lvl, is(arg, "4") ? "RTL->module TX/cmd" : "module->RTL RX/reply");
+    } else {
+      _io->println(F("usage: rfinject 4|5 0|1  (GP4=RTL-TX net, GP5=module-TX net)  |  rfinject off"));
+    }
+  } else if (is(verb, "pwen") || is(verb, "pw")) {
+    // GP6 is wired to the RFID module's PWEN (power-enable) pin. Drive it to
+    // force the module on/off (independent of the RTL); `read` to sense what the
+    // board does to it; drive it + scan the RTL to find the pin that natively
+    // drives PWEN. Independent of GP4/GP5 -> no snoop/master interaction.
+    if (arg && is(arg, "off")) {
+      gpio_init(RFID_PWEN_PIN); gpio_set_dir(RFID_PWEN_PIN, GPIO_IN);
+      _io->println(F("ok: PWEN (GP6) released to input (hi-Z)"));
+    } else if (arg && (is(arg, "read") || is(arg, "r") || is(arg, "?"))) {
+      gpio_init(RFID_PWEN_PIN); gpio_set_dir(RFID_PWEN_PIN, GPIO_IN);
+      _io->printf("PWEN (GP6) input = %d\r\n", gpio_get(RFID_PWEN_PIN) ? 1 : 0);
+    } else if (arg && (is(arg, "0") || is(arg, "1"))) {
+      int lvl = is(arg, "1") ? 1 : 0;
+      gpio_init(RFID_PWEN_PIN); gpio_set_dir(RFID_PWEN_PIN, GPIO_OUT); gpio_put(RFID_PWEN_PIN, lvl);
+      _io->printf("ok: PWEN (GP6) = %d — module power %s (driving)\r\n",
+                  lvl, lvl ? "ENABLED" : "disabled");
+    } else {
+      _io->println(F("usage: pwen 1|0 (drive on/off) | pwen read | pwen off   [GP6 -> module PWEN]"));
+    }
   } else if (is(verb, "baud")) {
     if (arg) { uint32_t b = strtoul(arg, nullptr, 10); _rtl->setBaud(b);
                _io->printf("ok: bridge baud = %lu\r\n", (unsigned long)b); }

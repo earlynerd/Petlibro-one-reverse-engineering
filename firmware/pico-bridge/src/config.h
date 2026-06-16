@@ -109,6 +109,13 @@
 #define RFID_READER_RX_PIN  5        // module TX (slave replies)
 #define RFID_HOST_RX_PIN    4        // RTL TX (master commands; -1 to disable)
 
+// ---- RFID module PWEN (power-enable) ---------------------------------------
+//   GP6 is wired to the module's "PWEN" pad (added 2026-06-14). Drive it HIGH to
+//   power the module on independently of the RTL (the rail the stock firmware
+//   normally gates), or drive it + scan the RTL to trace which RTL pin natively
+//   drives PWEN -- the long-sought enable. See the `pwen` console command.
+#define RFID_PWEN_PIN       6
+
 // CONFIRMED 2026-06-13: the JY-L601D <-> RTL link is Modbus RTU @ 19200,
 // slave addr 0x03 -- but parity is ASYMMETRIC (verified on the logic analyzer,
 // see modbus_parity.png / modbus_parity_RFID.png):

@@ -1,0 +1,36 @@
+This document describes the connections from the RTL8721DM chip to the pins of the castellated module it sits on. 
+module pin	| RTL QFN68 pin	|	RTL pin ID		| 	board level function
+1			|	29			|	PA16
+2			|	30			| 	PA17
+3			|	31			|	PA18
+4			|	32			|	PA19
+5			|	33			|	PA27
+6			|	36			|	PA30
+7			|	38			|	PA28
+8			|	39			|	PA26
+9			|	40			|	PA25
+10			|	41			|	PB1
+11			|	42			|	PB2
+12			|	43			|	PB3
+13			|	vcc			|	vcc
+14			|	gnd			|	gnd
+15			|	44			|	PB4
+16			|	45			|	PB5
+17			|	46			|	PB6
+18			|	47			|	PB7
+19			|	48			|	Vbat_meas
+20			|	60			|	PB22
+21			|	61			|	PB23
+22			|	63			|	PB26
+23			|	64			|	PB29
+24			|	65			|	PB31
+25			|	4			|	PA2
+26			|	3			|	PA4				|
+27			|	2			|	PA0				|
+28			|	6			|	chip_en			|	reset 
+29			|	7			|	LOG_UART		|	ISP header
+30			|	8			|	LOG_UART		|	ISP header
+31			|	25			|	PA12			|	"pwm" display conn 2
+32			|	26			|	PA13			|	"scl" display conn 2
+33			|	27			|	PA14			|	"sda1" display conn 2
+34			|	28			|	PA15			|	"sda2" display conn 2
