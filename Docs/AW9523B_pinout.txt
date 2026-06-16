@@ -1,0 +1,27 @@
+This document describes the connections of the IO expander IC
+AW9523B pin	|pin ID | board level function
+_______________________________________________
+1		| P1_0	| NC	
+2		| P1_1	| NC	
+3		| P1_2	| NC	
+4		| P1_3	| NC	
+5		| P0_0	| probably HW revision identification. 	
+6		| P0_1	| probably HW revision identification. 	
+7		| P0_2	| external pulldown. motor PWM. feed motor	
+8		| P0_3	| external pulldown. motor PWM. feed motor
+9		| GND	| GND
+10		| P0_4	| photoelectric sensor
+11		| P0_5	| photoelectric sensor	
+12		| P0_6	| RFID enable	
+13		| P0_7	| photoelectric emitters? goes to two groups	
+14		| P1_4	| NC	
+15		| P1_5	| NC	
+16		| P1_6	| NC	
+17		| P1_7	| piezo beeper	
+18		| AD0	| pulled down	
+19		| SCL	| RTL module	
+20		| SDA	| RTL module	
+21		| VCC	| VCC	
+22		| INTN	| appears unconnected	
+23		| RSTN	| pulled up, no other connection	
+24		| AD1	| pulled down

@@ -1,36 +1,37 @@
-This document describes the connections from the RTL8721DM chip to the pins of the castellated module it sits on. 
-module pin	| RTL QFN68 pin	|	RTL pin ID		| 	board level function
-1			|	29			|	PA16
-2			|	30			| 	PA17
-3			|	31			|	PA18
-4			|	32			|	PA19
-5			|	33			|	PA27
-6			|	36			|	PA30
-7			|	38			|	PA28
-8			|	39			|	PA26
-9			|	40			|	PA25
-10			|	41			|	PB1
-11			|	42			|	PB2
-12			|	43			|	PB3
-13			|	vcc			|	vcc
-14			|	gnd			|	gnd
-15			|	44			|	PB4
-16			|	45			|	PB5
-17			|	46			|	PB6
-18			|	47			|	PB7
-19			|	48			|	Vbat_meas
-20			|	60			|	PB22
-21			|	61			|	PB23
-22			|	63			|	PB26
-23			|	64			|	PB29
-24			|	65			|	PB31
-25			|	4			|	PA2
-26			|	3			|	PA4				|
-27			|	2			|	PA0				|
-28			|	6			|	chip_en			|	reset 
-29			|	7			|	LOG_UART		|	ISP header
-30			|	8			|	LOG_UART		|	ISP header
-31			|	25			|	PA12			|	"pwm" display conn 2
-32			|	26			|	PA13			|	"scl" display conn 2
-33			|	27			|	PA14			|	"sda1" display conn 2
-34			|	28			|	PA15			|	"sda2" display conn 2
+This document describes the connections from the RTL8721DM chip to the pins of the castellated module it sits on, and functions on the board. 
+module pin	| RTL QFN68 pin	|	RTL pin ID	| board level function
+____________________________________________________________________________________________
+1		|	29	|	PA16		|	something related to display connector 2
+2		|	30	| 	PA17		|	something related to food level pohotoelectric
+3		|	31	|	PA18		|	probably i2c for io expander
+4		|	32	|	PA19		|	probably i2c for io expander
+5		|	33	|	PA27		|	something related to io expander. maybe interrupt
+6		|	36	|	PA30		|	motor pwm, cover/lid 
+7		|	38	|	PA28		|	motor pwm, cover/lid 
+8		|	39	|	PA26		|	RFID UART
+9		|	40	|	PA25		|	RFID UART
+10		|	41	|	PB1		|	lid motor current shunt
+11		|	42	|	PB2		|	feed motor current shunt
+12		|	43	|	PB3		|	something related to cover photoelectric
+13		|	vcc	|	vcc		|
+14		|	gnd	|	gnd		|	
+15		|	44	|	PB4		|	possible cover photoelectric emitter
+16		|	45	|	PB5		|	possible feed chute IR emitter
+17		|	46	|	PB6		|	"surplus grain infrared" maybe emitter power
+18		|	47	|	PB7		|	probably Battery voltage divider
+19		|	48	|	Vbat_meas	|	probably input DC power adapter voltage divider
+20		|	60	|	PB22		|	audio amplifier (maybe enable?)
+21		|	61	|	PB23		|	con1_1 display pin 5
+22		|	63	|	PB26		|	con1_1 display pin 4
+23		|	64	|	PB29		|	audio amplifier (probably audio signal)
+24		|	65	|	PB31		|	audio amplifier (probably audio signal)
+25		|	4	|	PA2		|	con1_1 display pin 1
+26		|	3	|	PA4		|	con1_1 display pin 2
+27		|	2	|	PA0		|	con1_1 display pin 3
+28		|	6	|	chip_en		|	reset 
+29		|	7	|	LOG_UART	|	ISP header
+30		|	8	|	LOG_UART	|	ISP header
+31		|	25	|	PA12		|	"pwm" display conn 2
+32		|	26	|	PA13		|	"scl" display conn 2
+33		|	27	|	PA14		|	"sda1" display conn 2
+34		|	28	|	PA15		|	"sda2" display conn 2
