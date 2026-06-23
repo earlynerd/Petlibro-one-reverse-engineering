@@ -18,7 +18,7 @@ below).
 | Baud | 19200 | same both directions |
 | Parity | **asymmetric** | RTL→module = **8O1** (odd); module→RTL = **8E1** (even) |
 | Stop bits | 1 | |
-| Tag-ready IRQ | separate GPIO, module → RTL | **out-of-band tag-present signal** (not on the UART). The RTL gates its Modbus polling on this line — see [Tag-presence semantics](#tag-presence-semantics). Pin/polarity TBD. |
+| Tag-ready IRQ | **`PA_16`** (RTL pin 29 / module pad 1), module → RTL | **out-of-band tag-present signal** (not on the UART). The RTL gates its Modbus polling on this line — see [Tag-presence semantics](#tag-presence-semantics). **Active-low held level**: HIGH = no tag, LOW = tag in field (confirmed 2026-06-14). |
 
 ⚠️ The **parity differs per direction** — the module transmits its replies in
 even parity but accepts commands in odd. The RTL master doesn't validate RX
@@ -109,13 +109,20 @@ tag ID = "130" + "023370514455" = 130023370514455   ✓ matches the physical tag
 
 Presence detection, restated:
 
-- **Real signal** — the module → RTL **IRQ/data-ready GPIO** (separate from the
-  UART; pin/polarity still to be characterised). This is what the firmware
-  should watch.
-- **Modbus-level companion** — the read-quality byte (low byte of `0x0011`):
-  small live values (`0x01`/`0x02`) on a fresh read, `0xFF` when the ID is
-  stale/cached, and the **tag-present flag at `0x0012`** (`0x8000` with a tag,
-  `0x0000` without). These let you confirm freshness from the bus alone.
+- **Real signal** — the module → RTL **tag-ready IRQ on `PA_16`** (RTL pin 29 /
+  module pad 1), separate from the UART. **Active-low, held level:** `PA_16` reads
+  HIGH with no tag and is pulled LOW the entire time a tag is in the field
+  (confirmed 2026-06-14, tag on→`L` / off→`H`, stable). This is what the firmware
+  should watch — level-low or falling-edge — instead of polling.
+- **Modbus-level signal** — the reliable bus indicator is **`0x0050`**: it
+  ANSWERS (5-reg record) while a tag is in the field and goes **silent** (no
+  reply) once the tag is removed. Poll its respond-vs-silent to confirm presence.
+  ⚠ **Correction (2026-06-14, standalone master-mode bench):** `0x0012` is **NOT**
+  a live present/absent flag — with the tag removed it **stayed `0x8000`**, i.e.
+  it latches like the `0x000E` ID (matches the bench note that the reader latches
+  the last tag). `0x001F`'s tail byte did move (`0x0D00`→`0x0DFF`) but isn't
+  consistent across captures, so don't rely on it. Use `0x0050` respond-vs-silent,
+  or better, the out-of-band IRQ line above.
 
 The passive snoop's heuristic (infer "removed" after `kTagMissThresh` unanswered
 polls) still works *as a snoop* because it keys off the RTL's IRQ-gated polling
@@ -143,10 +150,10 @@ validates and labels the first Modbus PDU and flags the remainder as merged.
   serial / firmware version — which, and is it per-unit?
 - The per-read signal word at `0x001D`/`0x002F` (hi byte constant, lo byte
   varies each poll): RSSI, read counter, or confidence?
-- **The tag-ready IRQ line**: which module pin, what polarity, and is it a
-  level (held while a tag is in the field) or a pulse (on each decode)? This is
-  the real presence signal — worth tapping with a spare Pico GPIO so the snoop /
-  master mode can report tag events the way the host sees them.
+- ~~The tag-ready IRQ line~~ **RESOLVED (2026-06-14): `PA_16`, active-low held
+  level** (HIGH = no tag, LOW while a tag is in the field — confirmed by tag
+  on/off, stable). It's a level, not a per-decode pulse. This is the presence
+  signal the firmware should watch (level-low / falling-edge), no polling needed.
 - The data half of the boot `WRITE-MULTI @0x000E` (what the RTL seeds there).
 
 Most of the original open questions about the tag block are now **answered** by
@@ -222,7 +229,7 @@ The `0x000E` block in full (18 regs, `0x000E..0x001F`), decoded with the tag pre
 | `0x000F` | **`0570`** | **national ID [39:24]** |
 | `0x0010` | **`FDC0`** | **national ID [23:8]** |
 | `0x0011` | **`1701`** | **hi = national ID [7:0]; lo = read-quality** |
-| `0x0012` | **`8000`** / `0000` | **tag-present flag** (bit 15; `0x8000` with tag, `0` without) |
+| `0x0012` | **`8000`** | ~~tag-present flag~~ — **latches** `0x8000`, stays set after tag removed (2026-06-14 correction; use `0x0050` respond/silent instead) |
 | `0x0013` | `0005` | *rolling status — seen `0`/`5` in both tag states; not a simple counter* |
 | `0x0014`–`0x001B` | `0000` | (unused / reserved) |
 | `0x001C` | `0059` | *constant — config / block marker?* |

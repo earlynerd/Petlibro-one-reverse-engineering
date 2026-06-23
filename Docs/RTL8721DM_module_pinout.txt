@@ -1,37 +1,38 @@
-This document describes the connections from the RTL8721DM chip to the pins of the castellated module it sits on, and functions on the board. 
+This document describes the connections from the RTL8721DM chip to the pins of the castellated module it sits on, and functions on the board.
+Confidence: (C) = confirmed on hardware (see Docs/FEEDER_PINMAP.md); (?) = inferred / not yet proven.
 module pin	| RTL QFN68 pin	|	RTL pin ID	| board level function
 ____________________________________________________________________________________________
-1		|	29	|	PA16		|	something related to display connector 2
-2		|	30	| 	PA17		|	something related to food level pohotoelectric
-3		|	31	|	PA18		|	probably i2c for io expander
-4		|	32	|	PA19		|	probably i2c for io expander
-5		|	33	|	PA27		|	something related to io expander. maybe interrupt
-6		|	36	|	PA30		|	motor pwm, cover/lid 
-7		|	38	|	PA28		|	motor pwm, cover/lid 
-8		|	39	|	PA26		|	RFID UART
-9		|	40	|	PA25		|	RFID UART
-10		|	41	|	PB1		|	lid motor current shunt
-11		|	42	|	PB2		|	feed motor current shunt
-12		|	43	|	PB3		|	something related to cover photoelectric
+1		|	29	|	PA16		|	(C) RFID tag-ready IRQ -- active-low, held level (HIGH=no tag, LOW=tag in field)
+2		|	30	| 	PA17		|	(C) hopper food-level photoelectric DETECTOR (digital, active-low; emitter P0_7). NB: dispense is PB5
+3		|	31	|	PA18		|	(C) bit-bang I2C SDA to AW9523B (@0x58)
+4		|	32	|	PA19		|	(C) bit-bang I2C SCL to AW9523B
+5		|	33	|	PA27		|	(?) io-expander related, maybe interrupt (but AW9523B INTN is unconnected; RFID IRQ is PA16)
+6		|	36	|	PA30		|	(C) lid/cover motor -- PWM7; B (PA30 high) = CLOSE. both pins LOW = STOP; hi-Z creeps
+7		|	38	|	PA28		|	(C) lid/cover motor -- PWM6; A (PA28 high) = OPEN
+8		|	39	|	PA26		|	(C) RFID UART TX (RTL->module, 8O1 @19200, UART3)
+9		|	40	|	PA25		|	(C) RFID UART RX (module->RTL, 8E1 @19200, UART3)
+10		|	41	|	PB1		|	(C) lid motor current shunt -- ADC_CH4
+11		|	42	|	PB2		|	(C) feed motor current shunt -- ADC_CH5
+12		|	43	|	PB3		|	(C) lid OPEN-end photoelectric DETECTOR -- ADC_CH6; emitter P0_4
 13		|	vcc	|	vcc		|
-14		|	gnd	|	gnd		|	
-15		|	44	|	PB4		|	possible cover photoelectric emitter
-16		|	45	|	PB5		|	possible feed chute IR emitter
-17		|	46	|	PB6		|	"surplus grain infrared" maybe emitter power
-18		|	47	|	PB7		|	probably Battery voltage divider
-19		|	48	|	Vbat_meas	|	probably input DC power adapter voltage divider
-20		|	60	|	PB22		|	audio amplifier (maybe enable?)
-21		|	61	|	PB23		|	con1_1 display pin 5
-22		|	63	|	PB26		|	con1_1 display pin 4
-23		|	64	|	PB29		|	audio amplifier (probably audio signal)
-24		|	65	|	PB31		|	audio amplifier (probably audio signal)
-25		|	4	|	PA2		|	con1_1 display pin 1
-26		|	3	|	PA4		|	con1_1 display pin 2
-27		|	2	|	PA0		|	con1_1 display pin 3
-28		|	6	|	chip_en		|	reset 
-29		|	7	|	LOG_UART	|	ISP header
-30		|	8	|	LOG_UART	|	ISP header
-31		|	25	|	PA12		|	"pwm" display conn 2
-32		|	26	|	PA13		|	"scl" display conn 2
-33		|	27	|	PA14		|	"sda1" display conn 2
-34		|	28	|	PA15		|	"sda2" display conn 2
+14		|	gnd	|	gnd		|
+15		|	44	|	PB4		|	(C) lid CLOSED-end photoelectric DETECTOR -- ADC_CH0; emitter P0_4
+16		|	45	|	PB5		|	(C) dispense-rotor encoder DETECTOR -- ADC_CH1, 1 pulse/rev; emitter P0_5
+17		|	46	|	PB6		|	(C) dispense-chute photoelectric DETECTOR -- ADC_CH2; emitter P0_7
+18		|	47	|	PB7		|	(?) ADC_CH3 -- battery divider? (board-read said chute/hopper emitter power, but the emitter ENABLE is P0_7 -- reconcile)
+19		|	48	|	Vbat_meas	|	(?) DC adapter voltage divider -- ADC_CH7
+20		|	60	|	PB22		|	(?) audio amplifier (enable?)
+21		|	61	|	PB23		|	(?) display con1 pin 5
+22		|	63	|	PB26		|	(?) display con1 pin 4
+23		|	64	|	PB29		|	(?) audio amplifier (probably I2S/audio signal)
+24		|	65	|	PB31		|	(?) audio amplifier (probably I2S/audio signal)
+25		|	4	|	PA2		|	(?) display con1 pin 1
+26		|	3	|	PA4		|	(?) display con1 pin 2
+27		|	2	|	PA0		|	(?) display con1 pin 3
+28		|	6	|	chip_en		|	reset
+29		|	7	|	LOG_UART	|	ISP header / LOGUART console (TX)
+30		|	8	|	LOG_UART	|	ISP header / LOGUART console (RX)
+31		|	25	|	PA12		|	(?) display con2 "pwm"  (PWM ch0)
+32		|	26	|	PA13		|	(?) display con2 "scl"  (I2C clock?)
+33		|	27	|	PA14		|	(?) display con2 "sda1" (I2C data?)
+34		|	28	|	PA15		|	(?) display con2 "sda2" (I2C data 2?)

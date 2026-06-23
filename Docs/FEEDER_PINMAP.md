@@ -84,7 +84,7 @@ names from the datasheet pin table:
 
 ## RFID module power / enable — **RESOLVED** (2026-06-14)
 
-> **The RFID enable (PWEN) is AW9523B pin `P0_5` — an I2C GPIO-expander output,
+> **The RFID enable (PWEN) is AW9523B pin `P0_6` — an I2C GPIO-expander output,
 > NOT a direct RTL GPIO.** That is why every RTL-pin trace failed (single, combo,
 > opposite-bias, leave-one-out, and the forward/reverse PWEN injection): there is
 > no RTL pin on the PWEN net to find — the RTL asserts it by writing the expander.
@@ -95,8 +95,8 @@ names from the datasheet pin table:
 >   bit-bang — done by KM0 in stock firmware. (KM0 is part of our own combined
 >   km0+km4 image and the framework KM0 knows nothing of the AW9523B, so the bus is
 >   free for our KM4 to drive — and KM0 is ours to change if needed.)
-> - **To power the module:** set `P0_5` push-pull (GCR 0x11 |= 0x10), GPIO mode
->   (LEDM 0x12 |= 0x20), output (CFG 0x04 &= ~0x20), high (OUT 0x02 |= 0x20).
+> - **To power the module:** set `P0_6` push-pull (GCR 0x11 |= 0x10), GPIO mode
+>   (LEDM 0x12 |= 0x40), output (CFG 0x04 &= ~0x40), high (OUT 0x02 |= 0x40).
 >   Ready-to-run: `firmware/rtl8721dm-pinmap/tools/aw9523_pwen.py` (uses the
 >   explorer's `bb` bit-bang on PA_18/PA_19). Confirm via master-mode read.
 > - The board photo `Photos/DSC_1482.png` + `Docs/RTL8721DM_module_pinout.txt`
@@ -204,16 +204,42 @@ This reframes the fix as **firmware-level, not runtime GPIO toggling**:
   `PA_26`/`PA_25`** and use a genuine module reply as the (most robust) detector,
   toggling the candidate disable in early boot.
 
+## Board subsystem map (2026-06-14)
+
+Pad-level source of truth: `Docs/RTL8721DM_module_pinout.txt` (RTL ↔ castellated
+pads + board function) and `Docs/AW9523B_pinout.txt` (expander). Key subsystems
+for local **read-collar → open-lid**:
+
+| Subsystem | Pins | Notes |
+|---|---|---|
+| **RFID power (PWEN)** | AW9523B `P0_6` | confirmed — drive high powers the module |
+| **RFID Modbus UART** | `PA_26` TX / `PA_25` RX | UART3, 19200, 8O1 cmd / 8E1 reply |
+| **RFID tag-present IRQ** | `PA_16` | **active-low held level** (H = no tag, L = tag in field) — confirmed 2026-06-14; the clean presence signal |
+| **Expander I²C (bit-bang)** | `PA_18` SDA / `PA_19` SCL | AW9523B @ 0x58 |
+| **Lid / cover motor** | `PA_28` + `PA_30` | ✅ runs both directions (not spring-loaded). **Drive logic (2026-06-16): both pins LOW = STOP; one LOW + one HIGH/hi-Z = drive (dir set by which side); the driver reads hi-Z as ON, so a floating/input pin makes it CREEP — never leave these as input, hold both LOW to stop.** A (`PA_28` high / `PA_30` low) = **OPEN** (drives to the `PB_3`-dark end); B = **CLOSE** (`PB_4`-dark end). Closed-loop move validated 2026-06-16 (stop on the target detector going dark) — but **full duty overtravels into the hardstop**, so drive via **PWM** (`PA_28`=PWM6 / `PA_30`=PWM7, `pwm` cmd) for a slow approach. Stall/current shunt `PB_1` (ADC). |
+| **Feed / dispense motor** | AW9523B `P0_2` + `P0_3` | expander outputs; shunt `PB_2` (ADC) |
+| **Lid endstop photoelectrics** | **emitter `P0_4`** (expander); **detectors `PB_3` + `PB_4`** (RTL ADC) | ✅ 2026-06-16: `P0_4` high → `PB_3` lit (3928). Lid flag blocks ONE detector per endstop (`PB_4` dark at one end, `PB_3` dark at the other) = open/closed limits. Closed-loop: emitter on, drive until the target end's detector goes dark, then stop. |
+| **Hopper + chute photoelectrics** | **emitter `P0_7`** (expander, "two groups"); detectors **hopper=`PA_17`** (digital, active-low), **chute=`PB_6`** (RTL ADC) | ✅ 2026-06-16: `P0_7` high → `PB_6` lit (3918); hopper+chute share the `P0_7` enable. (`PA_17` = hopper, **not** dispense — that was a wrong-connector read.) |
+| **Dispense-rotor encoder** | **detector `PB_5`** (RTL ADC); emitter `P0_5`/`P0_7`; feed motor `P0_2`/`P0_3` (expander) | ✅ 2026-06-16: `PB_5` pulses `256↔3936` — **one pulse per rotor revolution** (single flag), and the geared feed motor turns slowly (one rev ≈ seconds; the 2 s spin saw <1 rev, the 8 s saw a pulse). **Count `PB_5` pulses = revolutions → measured dispensing** (drive feed motor until N revs, then stop). `PB_2` = feed current shunt (flat free-spinning, spikes on jam). |
+| **Power sense (ADC)** | `PB_7` battery divider, `Vbat_meas` adapter divider | |
+| **Audio amp** | `PB_22` (enable?), `PB_29`/`PB_31` (I²S/signal) | source of the earlier "static" |
+| **Display con1** | `PA_2`/`PA_4`/`PA_0`, `PB_23`, `PB_26` | carries the touch-panel signals (the earlier "buttons") |
+| **Display con2** | `PA_12` pwm / `PA_13` scl / `PA_14` sda_left / `PA_15` sda_right | Dot-matrix (TM16xx-style). **Bench-confirmed 2026-06-17** by driving the panel: data lines are `PA_14` & `PA_15` (adjacent), shared clock `PA_13`; `PA_12` carries the connector **PWM** — stock never drives it (display lights without it), function TBD. (`PA_16` was a guess here — it's actually the RFID IRQ, above.) |
+| **Expander IRQ?** | `PA_27` | maybe AW9523B INT (its INTN reads unconnected though) |
+
 ## Still to find
 
-- [x] **RFID-module enable / power-gate** — **AW9523B `P0_5`** via bit-bang I2C on
+- [x] **RFID-module enable / power-gate** — **AW9523B `P0_6`** via bit-bang I2C on
       `PA_18`/`PA_19` (see RESOLVED note above; `tools/aw9523_pwen.py`).
 - [x] **RFID-module UART** on the RTL side — **`PA_26` = TX, `PA_25` = RX**
       (confirmed by injection, 2026-06-14; see the RFID UART section).
-- [ ] **Tag-ready IRQ** (once powered: present/remove a tag → `watch` the toggling pin).
-- [ ] **Lid motor** drive output(s) + driver enable (careful `out` probing).
-- [ ] **Lid position / limit sensors** (move the lid by hand → `watch`).
-- [ ] **Analog sensors** on `PB_1–PB_7` (food level? weight? — `analogRead`).
+- [x] **Tag-ready IRQ** — `PA_16`, active-low held level (confirmed 2026-06-14).
+- [x] **Lid motor** — `PA_28`/`PA_30` H-bridge (confirmed both directions + endstops 2026-06-14).
+- [~] **Lid position / limit sensors** — cover photoelectric on `PB_3`/expander
+      `P0_4`/`P0_5`; **emitter (`P0_7`/`PB_4`) must be powered to read them** — still
+      to characterize the on-state values vs lid position.
+- [ ] **Analog sensors** on `PB_1–PB_7` (lid/feed current shunts `PB_1`/`PB_2`,
+      battery `PB_7` — `analogRead`; food-level photoelectric `PA_17`).
 - [ ] Confirm the button functions against actual behaviour.
 
 ## Method
