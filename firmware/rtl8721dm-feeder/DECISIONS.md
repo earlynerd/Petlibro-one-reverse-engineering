@@ -2,6 +2,287 @@
 
 Forward-facing breadcrumbs for the de-clouded replacement firmware. Newest first.
 
+## 2026-06-24 — Timezone + automatic DST (browser-pushed transition schedule)
+
+NTP only carries UTC, and tz was a manual fixed offset (default 0, no DST) — i.e. wrong local time
+until set, and a twice-a-year manual nudge. Fixed **without** putting a tz database on the device.
+
+- **The panel derives it from the browser.** On load it computes the current offset
+  (`-getTimezoneOffset()`) **and** the upcoming DST transition instants for the browser's zone (probing
+  `Date` daily, refined to the minute), then pushes both. Auto-syncs once per load when the device
+  disagrees (offset or next-transition mismatch); a "Match this device" button on Home's Device card
+  re-syncs on demand.
+- **New `time.dst list=epoch:offMin,...`** stores up to **MAX_DST=4 FUTURE transitions**; `Timekeeper`
+  applies each when its UTC moment passes (checked in `update()` and at boot) — **self-healing across
+  power-downs** (a transition that elapsed while off is applied on the next check). `time.tz` now skips
+  the flash write when the offset is unchanged (the panel may re-push an identical value).
+- **Persistence:** `time` namespace gains `dn` (int count) + `dst` (bytes blob, 6 B/transition, ≤24 B),
+  mirroring feeder's schedule pattern. time module is now 4 DCT vars (was 1) — well within the 27 cap.
+  `clock` state adds `dst_n` + `dst_next`.
+- **Caveat:** between a DST boundary and the next panel visit the device self-corrects from the stored
+  schedule; it would only need a manual re-open if the panel weren't opened for >~13 months (the
+  precompute horizon). Affects: `src/app/timekeeper.cpp`, `src/web/dashboard.h`.
+
+## 2026-06-24 — Panel: Schedule / History / Access tabs built out + Home lid controls
+
+Supersedes the "roadmap placeholders" note in the entry below — those three tabs are now functional,
+all on the existing API surface (no firmware changes; `dashboard.h` only). `node --check` clean.
+
+- **Home gains a Lid card:** Open / Close / Stop -> `lid.goto target=open|close` (closed-loop to the
+  endstop, auto-stop) and `lid.stop`. Position derived from the bench-verified inverse endstops
+  (`closed_end==0` = at OPEN end, `open_end==0` = at CLOSED end) + drive direction. Shows a hint when
+  `acl.enabled` (access control owns the lid then).
+- **Schedule:** `feeder.sched.list/add/clear` + the `feeder.auto` toggle. Add = native `<time>` +
+  portions (max 8 slots; add/clear only — no per-slot edit command exists). Hint surfaces
+  clock-not-synced / auto-off states.
+- **History:** client-side analytics from `/api/events` (most-recent ≤200) — parses `meal` detail
+  strings into a 7-day cups/day bar chart + KPIs (today / week) + recent-meals list. Only events with
+  a real epoch (`ts>=1e9`) are dated; pre-NTP meals are skipped.
+- **Access:** `acl.enable` toggle, `acl.hold`, whitelist via `acl.list/add/remove/clear`, an "Add
+  current collar" shortcut (uses live `acl.last_tag`/`rfid.last_tag`), and a visit log parsed from
+  `visit` events.
+- Added a global toast for action feedback (the old inline notice lived in the Home banner, invisible
+  on other tabs). Affects: `src/web/dashboard.h`.
+
+## 2026-06-24 — Phase 4: owner web control panel (Home + Bench), same APIs
+
+The dumb Phase-0 bench page (`dashboard.h`) is replaced by a **tabbed owner UI**, still served
+straight from flash (self-contained: vanilla JS + inline CSS, no CDN, no build step) on the same
+four endpoints — `/api/state`, `/api/commands`, `/api/cmd`, `/api/events`. **No firmware/registry
+changes:** the UI rides the existing contract, so drivers still appear with zero UI edits.
+
+- **Home = the daily driver.** Feed-Now (portions stepper -> `feeder.feed`, live dispense progress
+  from `feed.parcels`/`feed.target`, Stop -> `feeder.stop`); a live status strip (online / battery /
+  hopper / clock / auto); last-meal card (`feeder.last_meal`); hopper/chute/battery detail;
+  auto-schedule toggle (`feeder.auto`); device card (wifi/ip/clock/uptime); alert banner
+  (`alerts.active`, highest-prio).
+- **Bench tab (⚙) preserves the original harness verbatim** — raw `/api/state`, an auto-rendered
+  control per `/api/commands`, and the event-log tail. Nothing lost for bring-up.
+- **Schedule / History / Access are roadmap placeholders** (next build step). Their APIs already
+  exist: `feeder.sched.*`, the `meal`/`visit` event stream, `acl.*`.
+- Honest call: **battery is a normalized bar off the raw, uncalibrated ADC** (no fake %); raw count
+  in the title. CSS bug fixed in passing: the auto-schedule toggle needed `display:inline-block`
+  (a `<label>` not inside a flex parent had a collapsed track); bench state `<pre>` height restored.
+- Affects: `src/web/dashboard.h` only. Partially lands roadmap item 4.
+
+## 2026-06-24 — Chute sensor polarity: bench-confirmed active-low; display/classifier corrected (counter untouched)
+
+Folds in operator bench observation. Both break-beams are **active-low**; the hopper logic was
+already correct (empty = HIGH), and **only the chute *interpretation* read backwards** at idle.
+
+- **Root cause:** `g_chuteBlockedLvl` (default `true`) was misnamed — it actually held the chute's
+  **CLEAR/resting level** (active-low HW: idle = HIGH = 1). The parcel counter correctly keys its
+  **beam-restored** edge on that level (one count per kibble — hardware-verified clean 1-parcel
+  dispense). But the live state (`chute_blocked`) and the `diagnose()` jam classifier treated
+  `chute == that level` as *blocked*, so at idle (HIGH) they reported "blocked".
+- **Fix (counter path deliberately untouched):** renamed `g_chuteBlockedLvl` -> **`g_chuteClearLvl`**
+  and flipped the two interpretation sites to **`blocked = (chute != g_chuteClearLvl)`** (state +
+  classifier). `setChuteDebounce(...)`, `feed.cpp`, and the persistence key `"chuB"` are **unchanged**,
+  so counting behaviour is byte-for-byte identical (operator said "don't touch the counting" — honored).
+- **Surface:** `feeder.cfg` knob renamed `chute_blocked=` -> **`chute_clear=`** (it sets the clear/idle
+  level; default unchanged) + its echo key. The **state JSON key `feeder.chute_blocked` is kept** (the
+  dashboard reads it) — only its computed value is corrected.
+- General rule, now bench-proven for this board: **chute & hopper are active-low break-beams** (idle
+  HIGH, interrupted LOW); lid endstops also confirmed correct. Affects: `src/app/feeder.cpp`.
+
+## 2026-06-23 — Timestamps: clock established at boot (RTC-retain + flash re-seed)
+
+So logged events carry a real UTC epoch in ~all cases (needed for plottable feed history),
+not just after the NTP fix lands.
+
+- **`Timekeeper` now establishes a clock at `timeInit()`**, before NTP: trust the RTC if it
+  already holds a sane epoch (`>= SANE_EPOCH` ~2023; survives a **warm reboot**); else re-seed
+  it from the last epoch **persisted to flash** (survives a **cold power-down**, stale by the
+  downtime). NTP corrects either when it arrives. `g_synced` now means "have a usable clock from
+  any source"; a `source` field (none/rtc/flash/ntp/manual) is exposed in `time.now` + `clock` state.
+- **Flash persistence of the epoch** (Preferences "time" key `epoch`): on NTP fix, on `time.set`,
+  on a retained-RTC boot, and **hourly** while running (`PERSIST_MS`). Light on flash endurance.
+- **`eventlog` ts contract unchanged:** `>= 1e9` = real Unix epoch, `< 1e9` = boot-relative millis
+  (only the rare first-ever boot before any time source). Self-describing for the dashboard plotter.
+- Wiring: `main` calls `eventLogSetClock()` **before** `timeInit()` so the boot-time
+  "rtc retained" / "restored from flash" events themselves get real timestamps.
+
+## 2026-06-23 — Event log: DROPPED LittleFS, raw-flash journal instead (supersedes below)
+
+The LittleFS approach in the next entry **hardfaulted on the bench** (see `DEBUG_LOG.md`): the
+SDK's prebuilt lfs core faults on directory ops in our build (mounts a blank region as valid,
+then `lfs_dir_find_match` overruns). A raw flash erase/write/read round-trip at the same region
+PASSED and was cache-coherent, so the flash layer is solid — only lfs is broken.
+
+- **`eventlog` is now a RAW-FLASH sector-ring journal** on `flash_stream_read/write` +
+  `flash_erase_sector` (no filesystem). Same `eventLogAppend/HeadSeq/BuildJson/since` API; RAM-ring
+  fallback + JEDEC capacity guard retained. Region **0x500000, 256 KB** (64 x 4 KB sectors), in the
+  dump-verified free window.
+- **`seq` IS the record index** → slot = `(seq-1) % TOTAL` (3392 slots), O(1) address, no metadata.
+  On-flash record = `Event` (72 B) + a **`0xFEED1234` magic trailer written LAST** → a torn write
+  (power loss mid-record) leaves no magic and is skipped; the magic also makes the one-time boot
+  scan ignore leftover stock-firmware bytes. Entering a sector erases it (FIFO-drops the oldest 53).
+  ~3340 events retained.
+- Dropped the littlefs `-I` paths; kept `mbed/hal_ext` (flash_api.h) + `os_dep/include`
+  (device_lock.h). **No dependency on the SDK lfs/adapter at all.** Boots + serves HTTP confirmed.
+- Process lesson: don't reach for a heavyweight vendored abstraction (a filesystem) when the need
+  is a fixed-size append log and the raw primitive is already proven. Verify the dependency early.
+
+## 2026-06-23 — Phase 2: event log -> LittleFS (durable analytics spine)
+> SUPERSEDED by the entry above — LittleFS hardfaulted; replaced with a raw-flash journal.
+
+- **The event journal is now flash-backed and survives reboot** (same `eventLogAppend/HeadSeq/
+  BuildJson/since` API). The in-RAM ring is kept only as a **fallback** when flash can't be validated.
+- **Reuse the SDK's lfs flash adapter** (`g_lfs`, `g_lfs_cfg`, `lfs_diskio_*` — all in linked
+  `lib_arduino.a`), so NO block-device code of ours. Adapter places the FS at **0x200000, 1 MB**
+  (256 x 4 KB) — just above the 2 MB app slot and immediately above the DCT region (which ends at
+  0x200000). Image currently ends ~0xBB000, so ~1.2 MB guard below the FS. Satisfies the hard rule
+  (above image end + guard; NOT the FlashMemory 0x100000 XIP trap).
+- **Runtime capacity guard = the "verified" half of the rule.** On init we read the JEDEC capacity
+  (`flash_read_id`, 3rd byte = log2 bytes) and only mount/format if `0x200000+0x100000 <= capacity`;
+  otherwise we never touch flash and fall back to the RAM ring. Prevents formatting an out-of-bounds
+  region on a smaller-flash board. (The feeder dump showed ~8 MB, so it mounts.)
+- **Journal layout: two-file rotation, contiguous seqs.** Append fixed 72 B `Event` records to
+  `/ev.bin`; at **CAP_REC=4000** drop `/ev.old` and rename `/ev.bin`->`/ev.old`, start fresh
+  (=> 4000..8000 retained, ~576 KB). Seqs are strictly contiguous, so `buildJson(since)` maps
+  seq->global index in O(1) and reads only the most-recent slice (**MAX_EMIT=200** cap) — fast on the
+  dashboard's `since=recent` poll, bounded response. seq recovered from the newest record on boot.
+- **Power-loss safe:** open/write/**close** per append (close commits => each event durable; a torn
+  append just isn't there on reboot, seq continues from the last durable one). Rotation order
+  (remove old -> rename) loses at worst the already-oldest generation and self-heals next append.
+- `events.stats` / `events.clear` harness commands (fs up?, record count, head seq). First boot
+  formats the 1 MB region (one-time, a few seconds); later boots just mount.
+- **BUILD:** added `-I` for `littlefs/r2.50`, `mbed/hal_ext` (flash_api.h), `os_dep/include`
+  (device_lock.h) to platformio.ini. **Pending bench verify (do carefully — first writes at 0x200000):**
+  `events.stats` shows `fs:true`; `log.test` -> reboot -> the event persists AND the unit boots
+  normally (confirms 0x200000 region is free on this hardware).
+
+## 2026-06-23 — Phase 2: config persistence (Preferences/DCT)
+
+- **Settings now survive reboot.** Each module owns its own Preferences namespace and does
+  **load-on-init / save-on-change** (consistent with the registry pattern), no central blob:
+  - `acl` — whitelist + hold + enable. Whitelist can't be one DCT value (16 tags x 16 B > the
+    **132 B/value cap**), so each tag is its own `tN` string key; stale slots removed on save.
+  - `feeder` — all tunables (ppp/dir/jam/msp/hopE/chuB/chuMs/stall/rev/tries) + `auto` + the
+    schedule as one packed blob (4 B/slot). Recovery params moved to live in feeder (so they
+    persist) and are pushed to `Feed::setRecovery`/`setChuteDebounce` on load.
+  - `time` — tz offset.
+  - `config.wipe` / `config.info` (new `app/config`) — factory erase (reboot to apply) + per-module free count.
+- **Power-loss resume IS intended:** a persisted `acl.enable` re-powers the RFID rail and resumes
+  the gated lid on boot; `feeder.auto` resumes the schedule. Both default off, so nothing resumes
+  unless you enabled it. BENCH NOTE: if you've enabled them, a reboot will move the lid / dispense —
+  disable first or `config.wipe` when working on a disassembled unit.
+- **DCT limits (verified in `Preferences_impl_dct.h`):** 4 KB module, **27 vars/module**, **6 modules**,
+  key <=16 chars, value <=132 B. We use 3 modules; acl=19 vars, feeder=13, time=1 — all within budget.
+  DCT self-places at top of flash (~0x1F4000 in the 2 MB map, CRC'd + backup) — SDK-managed config
+  region, **distinct from** the LittleFS event-log region that gets pinned above the KM4 image next.
+- **BUILD GOTCHA (cost: a confusing fs-backend error):** the Preferences lib selects its backend from
+  `ARDUINO_ARCH_AMEBAD`, which the **Arduino IDE defines but this PlatformIO port does NOT** (it defines
+  `CONFIG_PLATFORM_8721D`). Without it the lib compiled the *filesystem* backend (`_fs_*` undefined).
+  Fix in `platformio.ini`: `-D NVS_USE_DCT` + `-I …/component/common/file_system/dct`. DCT symbols are
+  in the linked `variants/common_libs/lib_dct.a`. Builds clean (6 s). **Pending bench verify:** a
+  `time.tz` (or `feeder.cfg`) -> reboot -> read-back round-trip, and `config.info` showing DCT init OK.
+
+## 2026-06-23 — Dispense mechanism: real-world tuning (user bench knowledge)
+
+Folds in the operator's knowledge of how this auger actually behaves. All bench-tunable
+via `feeder.cfg`; the polarities/thresholds are still guesses pending hardware.
+
+- **Rotor is SLOW: ~8 s+ per pulse (per rev).** Consequences fixed:
+  - `ms_per_parcel` 4000 -> **15000** (the old 4 s timed out before a single rev completed).
+  - time-based **stall jam detection OFF by default** (`stall_ms` 2000 -> **0**) — a short stall
+    window false-trips a healthy slow dispense. **Current is the PRIMARY jam signal** (`jam` mA);
+    stall is an opt-in backstop, only sane with a window well above the inter-pulse time.
+- **Chute sensor is NOISY: one parcel flickers the beam many times** as kibbles tumble past.
+  The old "count every chute rising edge" would over-count one parcel as many. Fixed: count a
+  parcel on the **leading beam-break edge only**, then a **refractory window** (`chute_ms`, default
+  **1000 ms**) absorbs the rest of that parcel's burst. Safe because real parcels are seconds apart
+  (rotor turn time) — refractory << inter-parcel gap, so it never merges two. `Feed::setChuteDebounce
+  (ms, activeLevel)`; feeder keeps `chute_blocked` level in sync (same "beam broken" level).
+- **Jam/fault classifier** (`feeder.cpp diagnose()`), from the 4-signal set
+  {rotor turned?, peak current, chute blocked?, hopper full?} on an under-delivery:
+  - chute blocked + not turning -> **OVERFILL** ("FULL") — bowl full, food backed up the chute.
+  - chute blocked + turning -> **CHUTE** — output obstructed.
+  - clear + not turning + **high current** -> **JAM** — hard obstruction.
+  - clear + not turning + low/unknown current + hopper full -> **BRIDGE** — soft stall under a bridge/rathole.
+  - turning + hopper full + nothing delivered -> **BRIDGE** (auger spinning in a void).
+  - hopper low + nothing -> **EMPTY**.
+  Mechanism insight: a hard jam stalls at HIGH current; a bridge stalls SOFT (low current) or spins
+  free — so **current is what separates JAM from BRIDGE**. Uncalibrated (`jam`=0) the two are
+  indistinguishable and read BRIDGE. `Feed::peakCurrentMa()` feeds the classifier; a `diag` event
+  logs the full snapshot (`cur/rev/d/hop/ch`) for bench analysis. Alert under key `feed`.
+
+## 2026-06-23 — Phase 2: alerts -> display (+ fix: feeder update was never pumped)
+
+- **`app/alerts`** — the dot-matrix panel as a fault surface. **Push model:** producers call
+  `Alerts::raise(key,msg,prio,ttlMs=0)` / `Alerts::clear(key)`; the module arbitrates by
+  priority (tie -> most recent), renders the winner (`showText` if <=4 chars else `scroll`),
+  and clears the panel to dark when nothing is active. **`raise()` also writes the event log**
+  (only on new/changed, so re-raising a level condition each loop doesn't spam) — one call =
+  live surface + history. ttl=0 sticky; else auto-expire. Re-render only on shown key/msg change
+  (re-issuing `scroll()` each loop would reset the marquee). Why push, not event-tailing: the
+  producer is where "is it resolved?" is known. Commands `alerts.test/clear`; state `alerts{shown,active[]}`.
+- **Feeder wired:** `hopper-low` is a **continuous level** (`update()` raises/clears each loop
+  from `Sensors::hopper()` — clears when refilled); `rotor-jam` (FAULT) and `short` (WARN) are
+  **latched** and **cleared by a clean delivery** (RES_DONE). Emitter-power refuse -> `HW!` FAULT.
+  Messages are uppercase font-charset (`LOW/JAM/SHORT/HW!`). The old `eventLogAppend("alert",…)`
+  calls in feeder were replaced by `Alerts::raise` (no double-log).
+- **BUG FIXED (shipped in the feeder step): `Feeder::update()` was never added to `loop()`.**
+  Manual `feeder.feed` still physically dispensed (Feed::update() *is* pumped) but the completion
+  handler never ran — no `meal` events, `last_meal` frozen, latched alerts dead. Now pumped in
+  `loop()` (after AccessControl, before Alerts). Lesson: a registered module isn't wired until
+  its `update()` is in the loop — grep the loop when adding one.
+- **Lid-fault alert deferred:** lid only signals faults as ambiguous log events (open-loop
+  timeout is a *normal* stop), so clean surfacing needs a `Lid::result()` mirroring `Feed`'s, plus
+  an owner to poll it. Scoped as a follow-up; the Alerts infra already supports it.
+- Wiring/order in `loop()`: …AccessControl -> **Feeder -> Alerts** -> Display(marquee). Builds clean (5.5 s).
+
+## 2026-06-23 — Phase 2: time (NTP -> RTC), un-gates the feeder schedule
+
+- **`app/timekeeper`** (namespace `Timekeeper`, `timeInit()`). The on-chip **RTC is the
+  canonical free-running clock**; **SNTP sets it** on each fix. SNTP is async + non-blocking
+  (`sntp_init()` fires immediately, retries w/ backoff, re-syncs hourly), default server
+  `pool.ntp.org`. Key SDK fact: **`sntp_init` does NOT write the RTC** — it stashes the fix in
+  static vars; `Timekeeper::update()` polls `sntp_get_lasttime()` and on a new sane fix
+  (`tick` changed, `sec > 1e9`) does `rtc_write((time_t)sec)` (UTC). `synced()` flips true then.
+- **APIs/build facts (verified):** RTC via mbed `rtc_api.h` (`rtc_init/rtc_read/rtc_write`,
+  on the include path — the shipped `RTC` Arduino lib includes it unqualified). SNTP via
+  `extern "C"` prototypes (symbols live in prebuilt `variants/common_libs/lib_arduino.a`, so no
+  sntp.h path dependency). **`CONFIG_SYSTEM_TIME64` is OFF** → 32-bit `time_t` + the `long*`
+  `sntp_get_lasttime` signature (would be `long long*` if on). No `gmtime`/`localtime` dep:
+  epoch→civil date via inline Hinnant algorithm.
+- **Timezone = a config offset in minutes from UTC** (`time.tz min=-300` / `h=-5`), **no DST**.
+  Local time = `rtc_read() + tz`. Commands: `time.now/tz/set/sync` (`time.set epoch=` for the
+  bench / no-net; `time.sync` forces a fresh query via stop+init). State: `clock{synced,utc,local_iso,tz_min}`.
+- **Wiring:** `main` calls `timeInit()` right after `connectWifi()` (SNTP needs the link up) and
+  pumps `Timekeeper::update()` each loop. **Event log now timestamps with real epochs** —
+  `eventLogSetClock(Timekeeper::epochOrZero)`; pre-sync events fall back to `millis()` (small
+  values <1e9, distinguishable from epochs). **Feeder schedule un-gated:** its `timeNowMin()`
+  stub is replaced by `Timekeeper::minOfDayLocal()` (returns -1 until synced, so it still won't
+  fire blind). Builds clean (5.5 s). **Pending bench verify:** confirm a real NTP fix on the
+  device (watch for the `time ntp sync` event / `clock.synced`), then set the local `time.tz`.
+
+## 2026-06-23 — Phase 2: feeder (manual/volumetric dispense) + dispense rework
+
+- **`app/feeder`** — second headline behavior. Manual `feeder.feed portions=K`,
+  an in-RAM daily schedule (`feeder.sched.add/list/clear`, `feeder.auto`), portion/guard
+  config (`feeder.cfg`), and a `feeder` state subtree. Emits **`meal`** analytics events
+  (source, delivered/wanted parcels, **cups**, result) — the dispense half of the data spine.
+- **Unit model: 1 parcel = 1 auger chamber = 1/12 cup** (the smallest unit in the stock
+  app). Canonical analytics unit is the **parcel**; cups are derived (`PARCELS_PER_CUP=12`,
+  reported in state + meal events). A "portion" = `parcels_per_portion` parcels, **default 1**
+  (= 1/12 cup, matching stock). Tune via `feeder.cfg parcels=`.
+- **`Feed::dispense()` reworked from rev-counting to CHUTE-CONFIRMED VOLUMETRIC delivery.**
+  The auger is positive-displacement/chambered, so dispense targets N **chute-confirmed**
+  parcels — food only counts when the chute beam (PA_17) sees it fall. Turning an empty
+  chamber (hopper low) never counts; it just runs to timeout. **Dispenses regardless of
+  hopper state** — low hopper is a warning (`alert hopper-low`), not a blocker.
+- **Jam handling in the driver:** a current spike (`jam` mA) OR a stalled rotor
+  (`stall_ms` with no encoder advance) triggers a brief **reverse** (`reverse_ms`) to clear,
+  then resumes forward; after `jam_tries` attempts it gives up → `RES_JAM` + `alert rotor-jam`.
+  Tunable via `Feed::setRecovery()` / `feeder.cfg stall_ms/reverse_ms/jam_tries`.
+- **Driver contract added so the app doesn't duplicate the loop:** `Feed::dispense(parcels,…)`
+  / `runFor()` primitives now own all the once-scattered state setup; `busy()`/`result()`/
+  `parcelCount()`/`revCount()` let `feeder` learn the outcome. `feed.dispense` harness cmd now
+  takes `parcels=` (legacy `revs=` aliased). Builds clean (8.4 s). **Pending bench verify:**
+  chute/hopper polarity (both guesses, like the endstops were), `stall_ms` vs real rotor RPM,
+  jam current threshold. Schedule tick is **gated** (`timeNowMin()` returns -1) until `time` lands.
+
 ## 2026-06-21 — Phase 2 begins: access_control (RFID-gated lid)
 
 - **`app/access_control`** — first app-layer module. Watches the PA_16 tag IRQ; on a

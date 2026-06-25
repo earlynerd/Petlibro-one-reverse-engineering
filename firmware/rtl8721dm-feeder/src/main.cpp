@@ -25,6 +25,10 @@
 #include "drivers/buttons.h"
 #include "drivers/display.h"
 #include "app/access_control.h"
+#include "app/feeder.h"
+#include "app/timekeeper.h"
+#include "app/alerts.h"
+#include "app/config.h"
 
 static WiFiServer server(80);
 static bool        g_wifiUp = false;
@@ -61,6 +65,8 @@ static String cmd_logtest(const String& q) {
     uint32_t seq = eventLogAppend("test", msg);
     return String("{\"ok\":true,\"seq\":") + seq + "}";
 }
+static String cmd_evstats(const String&) { String s; eventLogStatsJson(s); return s; }
+static String cmd_evclear(const String&) { eventLogClear(); String s; eventLogStatsJson(s); return s; }
 
 // --------------------------------------------------------------------------
 static void connectWifi() {
@@ -93,6 +99,9 @@ void setup() {
     regAddCommand("ping",     cmd_ping,    "",         "liveness check");
     regAddCommand("echo",     cmd_echo,    "msg:str",  "echo a string back");
     regAddCommand("log.test", cmd_logtest, "msg:str",  "append a test event");
+    regAddCommand("events.stats", cmd_evstats, "", "event-log backing store status (fs/records/seq)");
+    regAddCommand("events.clear", cmd_evclear, "", "drop stored events (seq keeps advancing)");
+    configInit();   // config.wipe / config.info (persisted settings live in each module)
 
 #ifndef DISPLAY_ONLY
     aw9523Init();   // AW9523B expander: bit-bang I2C on PA_18/PA_19, harness cmds
@@ -102,10 +111,16 @@ void setup() {
     feedInit();     // feed motor (AW9523 P0_2/P0_3) + rotor encoder
     buttonsInit();  // front-panel buttons (PA_0/PA_2/PA_4/PB_26), active-low
     aclInit();      // access control: RFID -> whitelist -> lid (disabled until acl.enable)
+    feederInit();   // feeder: manual/scheduled dispensing -> meal events (sched gated on time)
+    alertsInit();   // fault conditions -> dot-matrix panel (alert surface)
 #endif
     displayInit();  // WS1625 dot-matrix (PA_13/14/15), alert surface
 
     connectWifi();
+
+    eventLogSetClock(Timekeeper::epochOrZero); // wire clock first so timeInit's own events get real ts
+    timeInit();                              // RTC (+flash re-seed) + SNTP (WiFi up) -> wall clock
+
     server.begin();
     Serial.print("HTTP: serving on http://");
     Serial.print(ipStr());
@@ -115,11 +130,15 @@ void setup() {
 void loop() {
     if (WiFi.status() != WL_CONNECTED) { g_wifiUp = false; connectWifi(); }
 
+    Timekeeper::update();   // pick up NTP fixes -> RTC (net/clock only)
+
 #ifndef DISPLAY_ONLY
     Lid::update();    // non-blocking motor safety/closed-loop pumps
     Feed::update();
     Buttons::update();
     AccessControl::update();   // RFID-gated lid state machine
+    Feeder::update();          // dispense completion + (gated) schedule
+    Alerts::update();          // arbitrate fault conditions -> display
 #endif
     Display::update();  // advances the marquee when scrolling
 

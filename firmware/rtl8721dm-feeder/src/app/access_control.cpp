@@ -5,6 +5,7 @@
 #include "app/registry.h"
 #include "app/eventlog.h"
 #include "web/http_server.h"
+#include <Preferences.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -39,6 +40,34 @@ static uint32_t g_visitStart  = 0;
 static uint32_t g_holdUntil    = 0;
 static uint32_t g_holdMs       = 5000;     // grace window after the tag leaves
 static bool     g_lidCmdOpen   = false;
+
+// ---- persistence (Preferences/DCT) ---------------------------------------
+// Whitelist can't fit one DCT value (16 tags x 16 B > 132 B cap), so each tag
+// is its own "tN" string key; enable+hold are scalars. Saved on every mutation.
+static void saveAcl() {
+    Preferences p;
+    if (!p.begin("acl", false)) return;
+    p.putBool("en",   g_enabled);
+    p.putUInt("hold", g_holdMs);
+    p.putInt ("n",    g_nTags);
+    for (int i = 0; i < g_nTags; i++)  p.putString((String("t") + i).c_str(), g_tags[i]);
+    for (int i = g_nTags; i < MAX_TAGS; i++) p.remove((String("t") + i).c_str());   // drop stale slots
+    p.end();
+}
+static void loadAcl() {
+    Preferences p;
+    if (!p.begin("acl", true)) return;
+    g_enabled = p.getBool("en", false);
+    g_holdMs  = p.getUInt("hold", g_holdMs);
+    int n = p.getInt("n", 0);
+    if (n < 0) n = 0; if (n > MAX_TAGS) n = MAX_TAGS;
+    g_nTags = 0;
+    for (int i = 0; i < n; i++) {
+        String v = p.getString((String("t") + i).c_str(), "");
+        if (v.length()) { strncpy(g_tags[g_nTags], v.c_str(), 15); g_tags[g_nTags][15] = 0; g_nTags++; }
+    }
+    p.end();
+}
 
 // Read the tag (a few tries) and report whether it's whitelisted.
 static bool readAndCheck() {
@@ -90,6 +119,7 @@ static String cmdEnable(const String& q) {
         Aw9523::rfidPower(true);                   // RFID must be powered to assert the IRQ
         g_present = false; g_holdUntil = 0; g_lidCmdOpen = false;
     }
+    saveAcl();
     eventLogAppend("acl", g_enabled ? "enabled" : "disabled");
     String s = "{\"enabled\":"; s += g_enabled ? "true" : "false"; s += "}";
     return s;
@@ -97,12 +127,14 @@ static String cmdEnable(const String& q) {
 static String cmdAdd(const String& q) {
     String id = httpGetParam(q, "tag");
     bool ok = addTag(id.c_str());
+    if (ok) saveAcl();
     String s = "{\"ok\":"; s += ok ? "true" : "false"; s += ",\"n\":"; s += g_nTags; s += "}";
     return s;
 }
 static String cmdRemove(const String& q) {
     String id = httpGetParam(q, "tag");
     bool ok = removeTag(id.c_str());
+    if (ok) saveAcl();
     String s = "{\"ok\":"; s += ok ? "true" : "false"; s += ",\"n\":"; s += g_nTags; s += "}";
     return s;
 }
@@ -112,10 +144,11 @@ static String cmdList(const String&) {
     s += "]}";
     return s;
 }
-static String cmdClear(const String&) { g_nTags = 0; return "{\"ok\":true,\"n\":0}"; }
+static String cmdClear(const String&) { g_nTags = 0; saveAcl(); return "{\"ok\":true,\"n\":0}"; }
 static String cmdHold(const String& q) {
     long s = qn(q, "s", 5); if (s < 0) s = 0;
     g_holdMs = (uint32_t)s * 1000;
+    saveAcl();
     String r = "{\"hold_s\":"; r += s; r += "}";
     return r;
 }
@@ -132,6 +165,11 @@ static void stateAcl(String& out) {
 }
 
 void aclInit() {
+    loadAcl();                              // restore whitelist + hold + enable
+    if (g_enabled) {                        // resume gated lid across reboots (mirror cmdEnable)
+        Aw9523::rfidPower(true);
+        g_present = false; g_holdUntil = 0; g_lidCmdOpen = false;
+    }
     regAddState(stateAcl);
     regAddCommand("acl.enable", cmdEnable, "v:0/1",  "enable RFID-gated lid (also powers RFID)");
     regAddCommand("acl.add",    cmdAdd,    "tag:id", "add a tag id to the whitelist");

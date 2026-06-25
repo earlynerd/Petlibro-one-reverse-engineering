@@ -17,3 +17,6 @@ flash_dump/*.bin
 # OS / editor cruft
 Thumbs.db
 .DS_Store
+
+firmware/rtl8721dm-pinmap/tools/
+petlibro/history/

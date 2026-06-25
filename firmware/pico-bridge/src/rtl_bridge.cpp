@@ -88,6 +88,14 @@ void RtlBridge::enterDownload() {
   assertReset(false);             // CHIP_EN high: ROM samples strap = low
   delay(RTL_DL_STRAP_HOLD_MS);    // hold past CHIP_EN rise + trap latch
   driveStrap(false);             // release -> line resumes as LOGUART
+  delay(RTL_DL_STRAP_HOLD_MS);
+  assertReset(true);              // CHIP_EN low: chip off, PA[7] not driven
+  delay(RTL_RST_PULSE_MS);
+  driveStrap(true);               // hold UART_DOWNLOAD (PA[7] net) low
+  delay(RTL_BOOT_SETTLE_MS);
+  assertReset(false);             // CHIP_EN high: ROM samples strap = low
+  delay(RTL_DL_STRAP_HOLD_MS);    // hold past CHIP_EN rise + trap latch
+  driveStrap(false);             // release -> line resumes as LOGUART
 }
 
 void RtlBridge::run() {

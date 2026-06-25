@@ -1,8 +1,8 @@
 #include "app/registry.h"
 
 namespace {
-constexpr int MAX_STATE = 16;
-constexpr int MAX_CMD   = 48;
+constexpr int MAX_STATE = 24;   // 12 contributors today; headroom for growth
+constexpr int MAX_CMD   = 96;   // 65 commands today; was 48 -> silently dropped time.* (registered last)
 
 StateFn  g_state[MAX_STATE];
 int      g_stateN = 0;
@@ -29,10 +29,12 @@ void appendEscaped(String& out, const char* s) {
 
 void regAddState(StateFn fn) {
     if (g_stateN < MAX_STATE) g_state[g_stateN++] = fn;
+    else Serial.println("[registry] MAX_STATE exceeded — state contributor DROPPED (raise MAX_STATE)");
 }
 
 void regAddCommand(const char* name, CmdFn fn, const char* argspec, const char* help) {
     if (g_cmdN < MAX_CMD) g_cmd[g_cmdN++] = { name, fn, argspec ? argspec : "", help ? help : "" };
+    else { Serial.print("[registry] MAX_CMD exceeded — command DROPPED (raise MAX_CMD): "); Serial.println(name); }
 }
 
 void regBuildState(String& out) {

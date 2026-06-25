@@ -60,9 +60,9 @@
 #define RTL_DLSTRAP_PIN        RTL_UART_RX_PIN // Pico pin on the PA[7] net
 #define RTL_DLSTRAP_ACTIVE_LOW 1               // UART_DOWNLOAD is low-active
 
-#define RTL_RST_PULSE_MS       20              // CHIP_EN reset pulse width
-#define RTL_BOOT_SETTLE_MS     10              // strap settle before reset release
-#define RTL_DL_STRAP_HOLD_MS   40              // hold strap low past CHIP_EN rise
+#define RTL_RST_PULSE_MS       50              // CHIP_EN reset pulse width
+#define RTL_BOOT_SETTLE_MS     50              // strap settle before reset release
+#define RTL_DL_STRAP_HOLD_MS   400              // hold strap low past CHIP_EN rise
                                                // + ROM trap sampling, then release
 
 // ---- USB DTR/RTS auto-reset on the bridge port (CDC0) ----------------------
